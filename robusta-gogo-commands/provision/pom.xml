@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <parent>
+    <groupId>fr.adele.robusta</groupId>
+    <artifactId>robusta-gogo-commands</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.adele.robusta.gogo-commands.build</groupId>
+  <artifactId>provision</artifactId>
+
+  <name>robusta-gogo-commands - imported bundles</name>
+
+  <packaging>pom</packaging>
+
+  <!--
+   | imported (non-local) bundles are listed here as dependencies
+   | and will be deployed by pax:provision unless they are marked
+   | with <optional>true</optional>
+  -->
+<!--   <dependencies> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.ipojo</artifactId> -->
+<!--       <version>1.8.4</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.ipojo.handler.whiteboard</artifactId> -->
+<!--       <version>1.6.0</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.gogo.runtime</artifactId> -->
+<!--       <version>0.10.0</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.gogo.command</artifactId> -->
+<!--       <version>0.12.0</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.slf4j</groupId> -->
+<!--       <artifactId>slf4j-api</artifactId> -->
+<!--       <version>1.6.6</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.slf4j</groupId> -->
+<!--       <artifactId>slf4j-simple</artifactId> -->
+<!--       <version>1.6.6</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie</groupId> -->
+<!--       <artifactId>shelbie-core</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie</groupId> -->
+<!--       <artifactId>shelbie-startup-console</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie</groupId> -->
+<!--       <artifactId>shelbie-commands-builtin</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie.commands</groupId> -->
+<!--       <artifactId>shelbie-config-commands</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie.commands</groupId> -->
+<!--       <artifactId>shelbie-ipojo-commands</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie.commands</groupId> -->
+<!--       <artifactId>shelbie-ssh-commands</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie</groupId> -->
+<!--       <artifactId>shelbie-ssh-server</artifactId> -->
+<!--       <version>2.0.0-M2</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.http.jetty</artifactId> -->
+<!--       <version>1.0.1</version> -->
+<!--     </dependency> -->
+<!--   </dependencies> -->
+
+  <properties>
+    <slf4j.version>1.6.6</slf4j.version>
+    <logback.version>1.0.0</logback.version>
+
+    <!-- Shelbie versions -->
+<!--     <shelbie.version>2.0.0-M2</shelbie.version> -->
+<!--     <shelbie-config-commands.version>2.0.0-M2</shelbie-config-commands.version> -->
+<!--     <shelbie-ipojo-commands.version>2.0.0-M2</shelbie-ipojo-commands.version> -->
+<!--     <shelbie-ssh-commands.version>2.0.0-M2</shelbie-ssh-commands.version> -->
+
+    <shelbie.version>2.0.0-M3-SNAPSHOT</shelbie.version>
+    <shelbie-config-commands.version>2.0.0-M3-SNAPSHOT</shelbie-config-commands.version>
+    <shelbie-ipojo-commands.version>2.0.0-M3-SNAPSHOT</shelbie-ipojo-commands.version>
+    <shelbie-ssh-commands.version>2.0.0-M3-SNAPSHOT</shelbie-ssh-commands.version>
+    <gogo.version>0.10.0</gogo.version>
+    <karaf.version>2.3.0</karaf.version>
+
+  </properties>
+
+  <dependencies>
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+      <version>${logback.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>${logback.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.configadmin</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.bundles</groupId>
+      <artifactId>ow2-util-log</artifactId>
+      <version>1.0.35</version>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.bundles</groupId>
+      <artifactId>ow2-util-i18n</artifactId>
+      <version>1.0.35</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-logging</groupId>
+      <artifactId>commons-logging-api</artifactId>
+      <version>1.1</version>
+    </dependency>
+<!--     <dependency> -->
+<!--       <groupId>bouncycastle</groupId> -->
+<!--       <artifactId>bcprov-jdk16</artifactId> -->
+<!--       <version>140</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.bouncycastle</groupId> -->
+<!--       <artifactId>bcprov-jdk15</artifactId> -->
+<!--       <version>1.46</version> -->
+<!--     </dependency> -->
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo</artifactId>
+      <version>1.8.4</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.composite</artifactId>
+      <version>1.8.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.annotations</artifactId>
+      <version>1.8.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.manipulator</artifactId>
+      <version>1.8.6</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.metadata</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.arch</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.arch.gogo</artifactId>
+      <version>1.0.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.api</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.handler.whiteboard</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+
+    <!-- Web Console -->
+
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole</artifactId>
+      <version>4.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole.plugins.memoryusage</artifactId>
+      <version>1.0.4</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole.plugins.obr</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole.plugins.packageadmin</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.webconsole</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole.plugins.gogo</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.webconsole.plugins.shell</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+
+
+    <!-- XML utils -->
+    <dependency>
+      <groupId>org.apache.servicemix.specs</groupId>
+      <artifactId>org.apache.servicemix.specs.jaxb-api-2.1</artifactId>
+      <version>1.8.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.servicemix.bundles</groupId>
+      <artifactId>org.apache.servicemix.bundles.jaxb-impl</artifactId>
+      <version>2.1.6_1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.ws.commons.schema</groupId>
+      <artifactId>XmlSchema</artifactId>
+      <version>1.4.3</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.servicemix.specs</groupId>
+      <artifactId>org.apache.servicemix.specs.activation-api-1.1</artifactId>
+      <version>1.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.servicemix.bundles</groupId>
+      <artifactId>org.apache.servicemix.bundles.woodstox</artifactId>
+      <version>3.2.9_1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.servicemix.specs</groupId>
+      <artifactId>org.apache.servicemix.specs.stax-api-1.0</artifactId>
+      <version>1.5.0</version>
+    </dependency>
+
+    <!-- Shell -->
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.gogo.runtime</artifactId>
+      <version>0.10.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.geronimo.blueprint</groupId>
+      <artifactId>geronimo-blueprint-api</artifactId>
+      <version>1.0.0</version>
+    </dependency>
+<!--     <dependency> -->
+<!--       <groupId>org.apache.aries</groupId> -->
+<!--       <artifactId>org.apache.aries.util</artifactId> -->
+<!--       <version>0.3</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.aries.proxy</groupId> -->
+<!--       <artifactId>org.apache.aries.proxy</artifactId> -->
+<!--       <version>0.3</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.aries.blueprint</groupId> -->
+<!--       <artifactId>org.apache.aries.blueprint</artifactId> -->
+<!--       <version>0.3.1</version> -->
+<!--     </dependency> -->
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.ipojo.handler.whiteboard</artifactId>
+      <version>1.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.shelbie</groupId>
+      <artifactId>shelbie-core</artifactId>
+      <version>${shelbie.version}</version>
+      <exclusions>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.fusesource.jansi</groupId>
+          <artifactId>jansi</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>net.java.dev.jna</groupId>
+          <artifactId>jna</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.apache.karaf.shell</groupId>
+          <artifactId>org.apache.karaf.shell.console</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.sonatype.jline</groupId>
+          <artifactId>jline</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.gogo.command</artifactId>
+      <version>${gogo.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.shelbie</groupId>
+      <artifactId>shelbie-commands-builtin</artifactId>
+      <version>${shelbie.version}</version>
+      <exclusions>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.apache.karaf.shell</groupId>
+          <artifactId>org.apache.karaf.shell.console</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.apache.felix</groupId>
+          <artifactId>org.apache.felix.gogo.shell</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.sonatype.jline</groupId>
+          <artifactId>jline</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.fusesource.jansi</groupId>
+          <artifactId>jansi</artifactId>
+        </exclusion>
+
+      </exclusions>
+
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.shelbie.commands</groupId>
+      <artifactId>shelbie-config-commands</artifactId>
+      <version>${shelbie-config-commands.version}</version>
+      <exclusions>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.apache.karaf.shell</groupId>
+          <artifactId>org.apache.karaf.shell.console</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.sonatype.jline</groupId>
+          <artifactId>jline</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.shelbie.commands</groupId>
+      <artifactId>shelbie-ipojo-commands</artifactId>
+      <version>${shelbie-ipojo-commands.version}</version>
+      <exclusions>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.apache.karaf.shell</groupId>
+          <artifactId>org.apache.karaf.shell.console</artifactId>
+        </exclusion>
+        <exclusion>  <!-- declare the exclusion here -->
+          <groupId>org.sonatype.jline</groupId>
+          <artifactId>jline</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+
+
+    <dependency>
+      <groupId>org.ow2.shelbie</groupId>
+      <artifactId>shelbie-startup-console</artifactId>
+      <version>${shelbie.version}</version>
+    </dependency>
+<!--     <dependency> -->
+<!--       <groupId>org.apache.karaf.shell</groupId> -->
+<!--       <artifactId>org.apache.karaf.shell.osgi</artifactId> -->
+<!--       <version>${karaf.version}</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.karaf.jaas</groupId> -->
+<!--       <artifactId>org.apache.karaf.jaas.modules</artifactId> -->
+<!--       <version>${karaf.version}</version> -->
+<!--     </dependency> -->
+
+<!--     <dependency> -->
+<!--       <groupId>org.apache.karaf.shell</groupId>         <exclusion>
+          <artifactId>bcprov-jdk15</artifactId>
+          <groupId>org.bouncycastle</groupId>
+        </exclusion>
+-->
+<!--       <artifactId>org.apache.karaf.shell.console</artifactId> -->
+<!--       <version>${karaf.version}</version> -->
+<!--     </dependency> -->
+
+  </dependencies>
+
+</project>
