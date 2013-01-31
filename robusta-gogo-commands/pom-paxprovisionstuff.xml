@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <parent>
+    <groupId>fr.adele.robusta</groupId>
+    <artifactId>robusta-gogo-commands</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.adele.robusta</groupId>
+  <artifactId>robusta</artifactId>
+
+  <name>fr.adele.robusta.gogo-commands</name>
+
+  <!--
+   | describe your project here
+  -->
+
+  <description>Generated using Pax-Construct</description>
+
+  <properties>
+    <!--
+     | some example OSGi runtime properties
+    -->
+    <org.osgi.service.http.port>8080</org.osgi.service.http.port>
+    <org.osgi.service.http.port.secure>8443</org.osgi.service.http.port.secure>
+  </properties>
+
+  <packaging>pom</packaging>
+
+  <modules>
+    <module>poms</module>
+    <module>provision</module>
+  </modules>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.ops4j</groupId>
+        <artifactId>maven-pax-plugin</artifactId>
+        <version>1.5</version>
+        <configuration>
+          <!--
+           | Pax-runner & pax provision no longer used! Not maintained. Went on to using Chameleon instead.
+          -->
+          <provision>
+            <param>--platform=felix</param>
+            <param>--console=true</param>
+<!--             <param>#-vmOptions=-Dorg.osgi.service.http.port=8888</param> -->
+<!--             <param>"-vmOptions=-Dfelix.config.properties=${basedir}/felix-conf/conf.properties</param> -->
+            <param>--vmOptions=-Dorg.osgi.service.http.port=8888 -Dfelix.config.properties=${basedir}/felix-conf/config.properties</param>
+
+          <!--
+        <param>-p=log</param>
+        -->
+          </provision>
+        </configuration>
+
+        <executions>
+          <!--
+           | uncomment to auto-generate IDE files
+          <execution>
+            <id>ide-support</id>
+            <goals>
+              <goal>eclipse</goal>
+            </goals>
+          </execution>
+          -->
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

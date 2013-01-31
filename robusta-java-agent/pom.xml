@@ -1,12 +1,42 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>fr.adele.robusta</groupId>
+    <artifactId>robusta</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+
   <groupId>fr.adele.robusta</groupId>
   <artifactId>robusta-java-agent</artifactId>
   <packaging>jar</packaging>
-  <version>1.0-SNAPSHOT</version>
-  <name>robusta-java-agent - simple agent jar</name>
-  <url>http://maven.apache.org</url>
+
+<!--   <name>robusta-java-agent - simple agent jar to make instrumentation available to robusta-gogo-commands</name> -->
+  <name>robusta-java-agent - agent for instrumentation</name>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <agent.class>fr.adele.robusta.RobustaJavaAgent</agent.class>
+    </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+          <archive>
+            <index>true</index>
+            <manifestEntries>
+              <Premain-Class>${agent.class}</Premain-Class>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

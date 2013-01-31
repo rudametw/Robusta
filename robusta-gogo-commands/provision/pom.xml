@@ -215,13 +215,35 @@
     </dependency>
 
     <!-- Web Console -->
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.http.bundle</artifactId>
+      <version>2.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.felix.commons</groupId>
+      <artifactId>org.apache.felix.commons.commons-fileupload</artifactId>
+      <version>1.2.2-0001-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.geronimo.bundles</groupId>
+      <artifactId>json</artifactId>
+      <version>20090211_1</version>
+    </dependency>
 
+    <dependency>
+      <groupId>org.apache.servicemix.bundles</groupId>
+      <artifactId>org.apache.servicemix.bundles.commons-io</artifactId>
+      <version>1.4_3</version>
+    </dependency>
 
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.webconsole</artifactId>
       <version>4.0.0</version>
     </dependency>
+
+<!-- qsdfqsdfqsdf -->
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.webconsole.plugins.memoryusage</artifactId>
@@ -252,6 +274,23 @@
       <artifactId>org.apache.felix.webconsole.plugins.shell</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
+
+<!-- qsdfqsdfqsdf -->
+
+
+    <!-- HTTP Jetty -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.http.jetty</artifactId> -->
+<!--       <version>2.2.0</version> -->
+<!--     </dependency> -->
+<!--     <dependency> -->
+<!--       <groupId>org.apache.felix</groupId> -->
+<!--       <artifactId>org.apache.felix.http</artifactId> -->
+<!--       <version>2.2.0</version> -->
+<!--     </dependency> -->
+
+
 
 
     <!-- XML utils -->
@@ -403,12 +442,14 @@
     </dependency>
 
 
+<!-- Do not start shelbie -->
+<!--     <dependency> -->
+<!--       <groupId>org.ow2.shelbie</groupId> -->
+<!--       <artifactId>shelbie-startup-console</artifactId> -->
+<!--       <version>${shelbie.version}</version> -->
+<!--     </dependency> -->
 
-    <dependency>
-      <groupId>org.ow2.shelbie</groupId>
-      <artifactId>shelbie-startup-console</artifactId>
-      <version>${shelbie.version}</version>
-    </dependency>
+
 <!--     <dependency> -->
 <!--       <groupId>org.apache.karaf.shell</groupId> -->
 <!--       <artifactId>org.apache.karaf.shell.osgi</artifactId> -->
