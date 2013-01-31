@@ -1,10 +1,10 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1359643275412
+Bnd-LastModified: 1359644745164
 Build-Jdk: 1.6.0_38
 Built-By: rudametw
 Bundle-DocURL: http://adele.imag.fr/
 Bundle-ManifestVersion: 2
-Bundle-Name: OW2 Shelbie :: Hello Commands
+Bundle-Name: Robusta :: Shelbie Commands
 Bundle-SymbolicName: fr.adele.robusta.shelbie-command
 Bundle-Vendor: Laboratoire D'Informatique de Grenoble, Adele team
 Bundle-Version: 1.0.0.SNAPSHOT

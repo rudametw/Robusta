@@ -12,7 +12,8 @@
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
---><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
 
@@ -20,18 +21,26 @@
     <artifactId>robusta</artifactId>
     <groupId>fr.adele.robusta</groupId>
     <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../parent/pom.xml</relativePath>
   </parent>
+
   <groupId>fr.adele.robusta</groupId>
   <artifactId>robusta-shelbie-command</artifactId>
   <packaging>bundle</packaging>
-  <version>1.0.0-SNAPSHOT</version>
-  <name>OW2 Shelbie :: Hello Commands</name>
+  <name>Robusta :: Shelbie Commands</name>
+
+<!--     <shelbie.version>2.0.0-M3-SNAPSHOT</shelbie.version> -->
+<!--     <shelbie-config-commands.version>2.0.0-M3-SNAPSHOT</shelbie-config-commands.version> -->
+<!--     <shelbie-ipojo-commands.version>2.0.0-M3-SNAPSHOT</shelbie-ipojo-commands.version> -->
+<!--     <shelbie-ssh-commands.version>2.0.0-M3-SNAPSHOT</shelbie-ssh-commands.version> -->
+<!--     <gogo.version>0.10.0</gogo.version> -->
+<!--     <karaf.version>2.3.0</karaf.version> -->
 
   <properties>
-    <ipojo.version>1.8.0</ipojo.version>
+    <ipojo.version>1.8.4</ipojo.version>
     <gogo.version>0.10.0</gogo.version>
     <jansi.version>1.8</jansi.version>
-    <karaf.version>2.2.5</karaf.version>
+    <karaf.version>2.3.0</karaf.version>
   </properties>
 
   <dependencies>
@@ -43,8 +52,8 @@
 
     <dependency>
       <!-- Provides RFC 147 APIs -->
-    	<groupId>org.apache.felix</groupId>
-    	<artifactId>org.apache.felix.gogo.runtime</artifactId>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.gogo.runtime</artifactId>
       <version>${gogo.version}</version>
     </dependency>
 
