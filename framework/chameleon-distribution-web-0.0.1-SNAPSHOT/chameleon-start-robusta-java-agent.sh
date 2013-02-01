@@ -226,9 +226,9 @@ run() {
 
         echo "Current directory is $PWD"
         echo "Starting chameleon with:"
-        echo "exec $JAVA -javaagent:$CHAMELEON_HOME/robusta/robusta-java-agent-1.0-SNAPSHOT.jar $JAVA_OPTS $OPTS -classpath \"$CLASSPATH\" org.ow2.chameleon.core.Main \"$@\""
+        echo "exec $JAVA -javaagent:$CHAMELEON_HOME/robusta/robusta-java-agent-1.0.0-SNAPSHOT.jar $JAVA_OPTS $OPTS -classpath \"$CLASSPATH\" org.ow2.chameleon.core.Main \"$@\""
 
-        exec       $JAVA -javaagent:$CHAMELEON_HOME/robusta/robusta-java-agent-1.0-SNAPSHOT.jar $JAVA_OPTS $OPTS -classpath "$CLASSPATH" org.ow2.chameleon.core.Main "$@"
+        exec       $JAVA -javaagent:$CHAMELEON_HOME/robusta/robusta-java-agent-1.0.0-SNAPSHOT.jar $JAVA_OPTS $OPTS -classpath "$CLASSPATH" org.ow2.chameleon.core.Main "$@"
 }
 
 main() {
