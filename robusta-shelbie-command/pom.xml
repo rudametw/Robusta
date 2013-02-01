@@ -18,13 +18,12 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>robusta</artifactId>
+    <artifactId>robusta-parent</artifactId>
     <groupId>fr.adele.robusta</groupId>
     <version>1.0.0-SNAPSHOT</version>
     <relativePath>../parent/pom.xml</relativePath>
   </parent>
 
-  <groupId>fr.adele.robusta</groupId>
   <artifactId>robusta-shelbie-command</artifactId>
   <packaging>bundle</packaging>
   <name>Robusta :: Shelbie Commands</name>
@@ -44,6 +43,13 @@
   </properties>
 
   <dependencies>
+
+    <dependency>
+      <groupId>fr.adele.robusta</groupId>
+      <artifactId>robusta-java-agent</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.ipojo.annotations</artifactId>
@@ -71,6 +77,12 @@
       <version>${jansi.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>14.0-rc2</version>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -90,15 +102,15 @@
     </pluginManagement>
 
     <plugins>
-      <plugin>
-        <!-- Sources and target are Java 5 compatible -->
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
-        </configuration>
-      </plugin>
+<!--       <plugin> -->
+<!--         Sources and target are Java 5 compatible -->
+<!--         <groupId>org.apache.maven.plugins</groupId> -->
+<!--         <artifactId>maven-compiler-plugin</artifactId> -->
+<!--         <configuration> -->
+<!--           <source>1.5</source> -->
+<!--           <target>1.5</target> -->
+<!--         </configuration> -->
+<!--       </plugin> -->
 
       <plugin>
         <!-- Default configuration for the maven plugin -->
@@ -107,8 +119,10 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
-            <Private-Package>fr.adele.robusta</Private-Package>
+<!--             <Private-Package>fr.adele.robusta</Private-Package> -->
+            <Private-Package>fr.adele.robusta.*</Private-Package>
             <Export-Package>!*</Export-Package>
+            <Import-Package>*</Import-Package>
           </instructions>
         </configuration>
       </plugin>
