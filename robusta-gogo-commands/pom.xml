@@ -3,13 +3,13 @@
 
   <parent>
     <groupId>fr.adele.robusta</groupId>
-    <artifactId>robusta</artifactId>
+    <artifactId>robusta-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <relativePath>../parent/pom.xml</relativePath>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
-  <groupId>fr.adele.robusta</groupId>
+
   <artifactId>robusta-gogo-commands</artifactId>
 
   <name>fr.adele.robusta.gogo-commands</name>
@@ -28,7 +28,7 @@
         <artifactId>maven-pax-plugin</artifactId>
         <version>1.5</version>
         <configuration>
-         </configuration>
+        </configuration>
       </plugin>
     </plugins>
   </build>
