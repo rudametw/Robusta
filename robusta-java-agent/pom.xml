@@ -14,10 +14,10 @@
 <!--   <name>robusta-java-agent - simple agent jar to make instrumentation available to robusta-gogo-commands</name> -->
   <name>robusta-java-agent - agent for instrumentation</name>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <agent.class>fr.adele.robusta.RobustaJavaAgent</agent.class>
-    </properties>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <agent.class>fr.adele.robusta.RobustaJavaAgent</agent.class>
+  </properties>
 
   <build>
     <plugins>
@@ -29,6 +29,8 @@
             <index>true</index>
             <manifestEntries>
               <Premain-Class>${agent.class}</Premain-Class>
+              <Can-Redefine-Classes>true</Can-Redefine-Classes>
+              <Main-Class>NotSuitableAsMain</Main-Class>
             </manifestEntries>
           </archive>
         </configuration>
