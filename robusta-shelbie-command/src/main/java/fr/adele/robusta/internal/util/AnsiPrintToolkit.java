@@ -71,59 +71,6 @@ public class AnsiPrintToolkit {
 		this.indenter = indenter;
 	}
 
-	//
-	// public void printElement(int level, Element element) {
-	// indent(level);
-	// // element ns:name in bold
-	// buffer.a(Ansi.Attribute.INTENSITY_BOLD);
-	// String ns = element.getNameSpace();
-	// if (verbose && !isEmpty(ns)) {
-	// buffer.a(ns);
-	// buffer.a(":");
-	// }
-	// buffer.a(element.getName());
-	// buffer.a(Ansi.Attribute.INTENSITY_BOLD_OFF);
-	//
-	// // Then print attributes
-	// if (element.getAttributes() != null) {
-	// for (Attribute attribute : element.getAttributes()) {
-	// printAttribute(attribute);
-	// }
-	// }
-	//
-	// // Now print childs Element (incrementing the indentation counter)
-	// if (element.getElements() != null) {
-	// for (Element child : element.getElements()) {
-	// // EOL
-	// eol();
-	// printElement((level + 1), child);
-	// }
-	// }
-	//
-	// }
-	//
-	// public void printAttribute(Attribute attribute) {
-	//
-	// // First, a separator
-	// buffer.a(" ");
-	//
-	// // Then the namespace (if verbose)
-	// String ns = attribute.getNameSpace();
-	// if (verbose && !isEmpty(ns)) {
-	// buffer.a(ns);
-	// buffer.a(":");
-	// }
-	//
-	// // The print the key/value pair
-	// buffer.a(attribute.getName());
-	// buffer.a("=\"");
-	// buffer.a(Ansi.Attribute.ITALIC);
-	// buffer.a(attribute.getValue());
-	// buffer.a(Ansi.Attribute.ITALIC_OFF);
-	// buffer.a("\"");
-	//
-	// }
-
 	public static boolean isEmpty(String value) {
 		return ((value == null) || ("".equals(value)));
 	}
@@ -213,10 +160,42 @@ public class AnsiPrintToolkit {
 		bold(":");
 		buffer.fg(Ansi.Color.DEFAULT);
 	}
-	public void title(String message) {
+
+	public void pad(final String message, final int repetitions){
+		for (int i = 0; i < repetitions; i++) {
+			bold("*");
+		}
+	}
+
+	public void title(final String message) {
+		final String padding = "*****";
+		final int INDENT_SIZE = 4;
+		final int length = 2*padding.length() + message.length() + 2*INDENT_SIZE*DEFAULT_INDENTER.length();
+
 		buffer.fg(Ansi.Color.BLUE);
+
+		pad("*", length);eol();
+		bold(padding);indent(INDENT_SIZE);bold(message);indent(INDENT_SIZE);bold(padding);eol();
+		pad("*", length);eol();
+
+		buffer.fg(Ansi.Color.DEFAULT);
+	}
+
+	public void subtitle(String message) {
+		final String padding = "***";
+		final int INDENT_SIZE = 1;
+
+		buffer.fg(Ansi.Color.BLUE);
+		bold(padding);indent(INDENT_SIZE);bold(message);indent(INDENT_SIZE);bold(padding);eol();
+		buffer.fg(Ansi.Color.DEFAULT);
+	}
+
+	public void urgent(String message) {
+		buffer.bgBright(Ansi.Color.RED);
+		buffer.fg(Ansi.Color.WHITE);
 		bold(message);
 		buffer.fg(Ansi.Color.DEFAULT);
+		buffer.bg(Ansi.Color.DEFAULT);
 		eol();
 	}
 
@@ -227,11 +206,16 @@ public class AnsiPrintToolkit {
 	}
 
 	public static String padRight(String s, int n) {
-	     return String.format("%1$-" + n + "s", s);
+		return String.format("%1$-" + n + "s", s);
 	}
 
 	public static String padLeft(String s, int n) {
-	    return String.format("%1$" + n + "s", s);
+		return String.format("%1$" + n + "s", s);
+	}
+
+	public void debug(String string) {
+		yellow("DEBUG: "+ string);
+		eol();
 	}
 
 }
