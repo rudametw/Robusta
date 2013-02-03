@@ -220,10 +220,18 @@ public class AnsiPrintToolkit {
 		eol();
 	}
 
-
 	public void bold(int message) {
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD);
 		buffer.a(message);
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD_OFF);
 	}
+
+	public static String padRight(String s, int n) {
+	     return String.format("%1$-" + n + "s", s);
+	}
+
+	public static String padLeft(String s, int n) {
+	    return String.format("%1$" + n + "s", s);
+	}
+
 }

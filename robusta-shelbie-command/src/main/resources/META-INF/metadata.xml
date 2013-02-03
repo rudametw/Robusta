@@ -20,7 +20,7 @@
        xsi:schemaLocation="org.apache.felix.ipojo http://felix.apache.org/ipojo/schemas/1.6.0/core.xsd">
 
   <!-- Creates an instance of the Action -->
-  <shell:command-instance action="fr.adele.robusta.HelloAction" />
+  <shell:command-instance action="fr.adele.robusta.TestAction" />
   <shell:command-instance action="fr.adele.robusta.DumpAction" />
 
 
