@@ -174,6 +174,7 @@ public class AnsiPrintToolkit {
 
 		buffer.fg(Ansi.Color.BLUE);
 
+		eol();
 		pad("*", length);eol();
 		bold(padding);indent(INDENT_SIZE);bold(message);indent(INDENT_SIZE);bold(padding);eol();
 		pad("*", length);eol();

@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -115,585 +114,32 @@ public class DumpAction implements Action {
 	AnsiPrintToolkit toolkit;
 	Ansi buffer;
 
-	public Object execute(final CommandSession session) throws Exception {
-		toolkit = new AnsiPrintToolkit();
-		buffer = toolkit.getBuffer();
-
-		try {
-			if (debug) {
-				verbose = true;
-			}
-
-			// Garbage collect BEFORE any calculations
-			if (gc) {
-				collectGarbage();
-			}
-
-			if (all) {
-				stats = true;
-				classes = true;
-				treeLoading = true;
-				treeDelegation = true;
-				list = true;
-				numbers = true;
-				classesWithCl = true;
-			}
-
-			// If nothing is set, we should print stats
-			if (!classes && !treeDelegation && !treeLoading && !stats && !duplicates && !duplicatesByCL && !gc && !list) {
-				stats = true;
-			}
-
-			if (classes) {
-				dumpAllClasses();
-			}
-
-			if (duplicates || duplicatesByCL) {
-				printDuplicateClasses();
-			}
-
-			if (list) {
-				printClassloaderList();
-			}
-			if (treeDelegation) {
-				printClassloaderDelegationTree();
-			}
-			if (treeLoading) {
-				// printClassloaderTreeLoading();
-				throw new UnsupportedOperationException();
-			}
-			if (stats) {
-				printStats();
-			}
-
-		} catch (final Throwable e) {
-			// Send stacktrace to buffer!
-			final String stackTrace = Throwables.getStackTraceAsString(e);
-			toolkit.red(stackTrace);
-			toolkit.eol();
-		} finally {
-			// Flush buffer to console
-			final PrintStream stream = System.out;
-			stream.println(toolkit.getBuffer().toString());
-
-			// release buffer and toolkit (just in case)
-			toolkit = null;
-			buffer = null;
+	public static final Comparator<Class<?>> classComparator = new Comparator<Class<?>>() {
+		// @Override (whyyy doesn't it work?
+		public int compare(final Class<?> c1, final Class<?> c2) {
+			return c1.getName().compareTo(c2.getName());
 		}
-		return null;
-	}
+		// @Override
+		// public int compare(Object c1, Object c2) {
+		// return c1.getName().compareTo(c2.getName());
+		// }
+	};
 
-	private void collectGarbage() {
-		final long time1 = System.currentTimeMillis();
-		toolkit.title("Garbage Collection");
+	public static final Comparator<Class<?>> classloaderComparator = new Comparator<Class<?>>() {
+		// @Override (whyyy doesn't it work? I should have to override...
+		public int compare(final Class<?> c1, final Class<?> c2) {
+			final String cl1 = c1.getClassLoader().toString();
+			final String cl2 = c2.getClassLoader().toString();
 
-		System.gc();
-		try {
-			Thread.sleep(500);
-		} catch (final InterruptedException e) {
-			e.printStackTrace();
+			return cl1.compareTo(cl2);
 		}
-		System.gc();
-
-		final long time2 = System.currentTimeMillis();
-		toolkit.indent(2);
-		buffer.a("Garbage Collection in " + (time2 - time1) + " miliseconds");
-		toolkit.eol();
-	}
-
-	/*
-	 * This method gets all loaded classes from JVM agent and for each class gets its classloader. Not all classloaders
-	 * are found, a few are missing and require navegating the classloader tree.
-	 */
-	private Set<ClassLoader> getInitialClassloaders() {
-
-		if (verbose) {
-			toolkit.eol();
-			toolkit.title("Getting initial classloaders");
-		}
-
-		final Set<ClassLoader> classloaders = new HashSet<ClassLoader>();
-
-		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
-			final ClassLoader classloader = clazz.getClassLoader();
-			boolean isAdded;
-
-			if (!classloaders.add(classloader)) { // add classloader to set
-				isAdded = false;
-			} else {
-				isAdded = true;
-			}
-
-			if (verbose) { // Print loaders that are added and are not
-				if (!isAdded) {
-					toolkit.yellow("Classloader not added:" + classloader + ":clazz=" + clazz);
-					toolkit.eol();
-				} else {
-					if (debug) {
-						toolkit.green("Classloader added:" + classloader + ":clazz=" + clazz);
-						toolkit.eol();
-					}
-				}
-			}
-		}
-		if (debug) {
-			toolkit.eol();
-			buffer.a("Number of initial class loaders found: " + classloaders.size());
-		}
-		return classloaders;
-	}
-
-	private String getGenericClassLoaderName(final ClassLoader loader, final String nullValueString) {
-		String loaderName;
-		if (loader != null) {
-			loaderName = loader.toString();
-		} else {
-			loaderName = nullValueString;
-		}
-		return loaderName;
-	}
-
-	private String getClassLoaderName(final ClassLoader loader) {
-		return getGenericClassLoaderName(loader, "bootstrap (NULL)");
-	}
-
-	private String getClassLoaderLoaderName(final ClassLoader loader) {
-		final ClassLoader loaderLoader;
-		if (loader != null)
-			loaderLoader = loader.getClass().getClassLoader();
-		else
-			loaderLoader = null;
-		return getGenericClassLoaderName(loaderLoader, "null-loader");
-	}
-
-	private String getClassLoaderParentName(final ClassLoader loader) {
-		final ClassLoader parent;
-		if (loader != null)
-			parent = loader.getParent();
-		else
-			parent = null;
-		return getGenericClassLoaderName(parent, "null-parent");
-	}
-
-	private ClassLoader getClassLoaderParent(final ClassLoader loader) {
-		final ClassLoader parent;
-		if (loader != null) {
-			parent = loader.getParent();
-		} else {
-			parent = null;
-		}
-		return parent;
-	}
-
-	private ClassLoader getClassLoaderLoader(final ClassLoader loader) {
-		final ClassLoader loaderLoader;
-		if (loader != null) {
-			loaderLoader = loader.getClass().getClassLoader();
-		} else {
-			loaderLoader = null;
-		}
-		return loaderLoader;
-	}
-
-	/*
-	 * DO NOT USE: to be removed
-	 */
-	private Set<ClassLoader> getAllClassloaders_OLD() {
-		final Set<ClassLoader> initialClassloaders = getInitialClassloaders();
-		final List<ClassLoader> classloaders = new ArrayList<ClassLoader>(initialClassloaders);
-		final List<ClassLoader> newFound = new ArrayList<ClassLoader>();
-		// final List<ClassLoader> classloaders = new ArrayList<ClassLoader>(this.getInitialClassloaders());
-
-		if (debug) {
-			toolkit.blue("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
-			toolkit.eol();
-		}
-		ListIterator<ClassLoader> iter = classloaders.listIterator();
-
-		int iterations = 0;
-		// for (final ClassLoader loader : classloaders) {
-		while (iter.hasNext()) {
-			iterations++;
-			final ClassLoader loader = iter.next();
-			final ClassLoader parent = getClassLoaderParent(loader);
-			final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-			final String loaderName = getClassLoaderName(loader);
-			final String parentName = getClassLoaderParentName(loader);
-			final String loaderLoaderName = getClassLoaderLoaderName(loader);
-			if (debug)
-				toolkit.debug("NAMES loader: " + loader + " loaderLoader: " + loaderLoader + " parent: " + parent);
-			if (!classloaders.contains(loaderLoader)) { // New classloader found!
-				toolkit.urgent("NEW Missing ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: " + loaderLoader);
-				// classloaders.add(loader); // this will be included into the iteraction
-				iter.add(loaderLoader); // this will be included into the iteraction
-				newFound.add(loaderLoader);
-				toolkit.urgent("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
-			} else {
-				// classloaders.
-				if (debug) {
-					toolkit.blue("OLDCLL--> " + loaderLoaderName);
-				}
-			}
-			if (!classloaders.contains(parent)) { // New classloader!
-				toolkit.indent();
-				toolkit.urgent("NEW Missing ParentClassLoader FOUND --> " + parentName + " value: " + parent);
-				// toolkit.urgent(" PARENT: " + parent.);
-				// classloaders.add(loader); // this will be included into the iteraction
-				iter.add(parent); // this will be included into the iteraction
-				newFound.add(parent);
-				toolkit.urgent("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
-			} else {
-				if (debug) {
-					toolkit.indent();
-					toolkit.blue("OLDPCL--> " + parentName);
-					toolkit.eol();
-				}
-			}
-
-			if (verbose) {
-				if (loaderLoader == parent) {
-					toolkit.green("[SAME]");
-				} else {
-					toolkit.cyan("[DIFF]");
-				}
-			}
-
-			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
-		}
-		if (debug) {
-			toolkit.debug("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders New size is: " + classloaders.size());
-			toolkit.debug("Iterations: " + iterations);
-			toolkit.debug("Last value: " + classloaders.get(classloaders.size() - 1));
-			// toolkit.debug("Last value: " + classloaders.get(classloaders.size()));
-		}
-
-		for (ClassLoader loader : newFound) {
-			// final ClassLoader parent = getClassLoaderParent(loader);
-			// final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-			final String loaderName = getClassLoaderName(loader);
-			final String parentName = getClassLoaderParentName(loader);
-			final String loaderLoaderName = getClassLoaderLoaderName(loader);
-
-			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
-		}
-
-		return null;
-	}
-
-	private boolean isClassLoaderKnown(Collection<ClassLoader> c1, Collection<ClassLoader> c2, Collection<ClassLoader> c3, ClassLoader loader) {
-		if (c1.contains(loader) || c2.contains(loader) || c3.contains(loader))
-			return true;
-		else
-			return false;
-	}
-
-	private Set<ClassLoader> getAllClassloaders() {
-
-		// final Set<ClassLoader> initialClassloaders = getInitialClassloaders();
-		final Set<ClassLoader> allClassloaders = new HashSet<ClassLoader>();
-		Set<ClassLoader> newFound = new HashSet<ClassLoader>(getInitialClassloaders());
-
-		// used to break loop when no more classloaders are found
-		boolean found_new_loader = false;
-
-		// used for stats only
-		int iterations = 0;
-
-		if (newFound.size() > 0)
-			found_new_loader = true;
-		if (debug) {
-			toolkit.debug("Initial ClassLoader size: " + newFound.size());
-		}
-
-		while (found_new_loader) {
-
-			final List<ClassLoader> currentClassloaders = new ArrayList<ClassLoader>(newFound);
-
-			// Start with an empty new found list!
-			newFound = new HashSet<ClassLoader>();
-
-			for (final ClassLoader loader : currentClassloaders) {
-				final ClassLoader parent = getClassLoaderParent(loader);
-				final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-				final String loaderName = getClassLoaderName(loader);
-				final String parentName = getClassLoaderParentName(loader);
-				final String loaderLoaderName = getClassLoaderLoaderName(loader);
-
-				iterations++;
-
-				if (debug)
-					toolkit.debug("NAMES loader: " + loader + " loaderLoader: " + loaderLoader + " parent: " + parent);
-
-				// If new classloader found!
-				// if (!currentClassloaders.contains(loaderLoader)) {
-				if (!isClassLoaderKnown(allClassloaders, currentClassloaders, newFound, loaderLoader)) {
-					toolkit.urgent("NEW Missing ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: " + loaderLoader);
-					newFound.add(loaderLoader);
-					toolkit.urgent("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
-				} else {
-					// classloaders.
-					if (debug) {
-						toolkit.blue("OLDCLL--> " + loaderLoaderName);
-					}
-				}
-
-				// If new classloader found!
-				// if (!classloaders.contains(parent)) { // New classloader!
-				if (!isClassLoaderKnown(allClassloaders, currentClassloaders, newFound, parent)) {
-					toolkit.indent();
-					toolkit.urgent("NEW Missing ParentClassLoader FOUND --> " + parentName + " value: " + parent);
-					newFound.add(parent);
-					toolkit.urgent("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
-				} else {
-					if (debug) {
-						toolkit.indent();
-						toolkit.blue("OLDPCL--> " + parentName);
-						toolkit.eol();
-					}
-				}
-
-				if (verbose) {
-					if (loaderLoader == parent) {
-						toolkit.green("[SAME]");
-					} else {
-						toolkit.cyan("[DIFF]");
-					}
-				}
-				printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
-			}
-			if (debug) {
-				toolkit.urgent("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
-				toolkit.debug("Iterations: " + iterations);
-				toolkit.debug("Last value added to currentClassLoaders: " + currentClassloaders.get(currentClassloaders.size() - 1));
-				// toolkit.debug("Last value: " + classloaders.get(classloaders.size()));
-			}
-
-			for (ClassLoader loader : newFound) {
-				// final ClassLoader parent = getClassLoaderParent(loader);
-				// final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-				final String loaderName = getClassLoaderName(loader);
-				final String parentName = getClassLoaderParentName(loader);
-				final String loaderLoaderName = getClassLoaderLoaderName(loader);
-				toolkit.yellow("New Found entry: ");
-				printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
-			}
-
-			allClassloaders.addAll(currentClassloaders);// Save current set of classloaders
-
-			if (newFound.size() == 0) // nothing found, break loop!
-				found_new_loader = false;
-
-		}
-		return allClassloaders;
-	}
-
-	private void printClassloaderList() {
-		toolkit.eol();
-		toolkit.title("Print classloaders (Careful with missing ones in red)");
-		printClassloaderList(getInitialClassloaders());
-		toolkit.eol();
-		toolkit.title("Find missing classloaders (they appear in red)");
-		getAllClassloaders();
-	}
-
-	private void printClassloaderList(final Set<ClassLoader> classloaders) {
-		// final Set<ClassLoader> classloaders = getInitialClassloaders();
-
-		toolkit.eol();
-		toolkit.title("Print classloaders (Careful with missing ones in red)");
-
-		for (final ClassLoader loader : classloaders) {
-
-			final ClassLoader parent = getClassLoaderParent(loader);
-			final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-			final String loaderName = getClassLoaderName(loader);
-			final String parentName = getClassLoaderParentName(loader);
-			final String loaderLoaderName = getClassLoaderLoaderName(loader);
-
-			if (!classloaders.contains(loaderLoader)) { // New classloader!
-				toolkit.urgent("NEW ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: " + loaderLoader);
-				toolkit.eol();
-			} else {
-				// classloaders.
-				if (debug) {
-					toolkit.blue("OLDCLL--> " + loaderLoaderName);
-				}
-			}
-			if (!classloaders.contains(parent)) { // New classloader!
-				toolkit.indent();
-				toolkit.urgent("NEW ParentClassLoader FOUND --> " + parentName + "value: " + parent);
-				toolkit.eol();
-			} else {
-				if (debug) {
-					toolkit.indent();
-					toolkit.blue("OLDPCL--> " + parentName);
-					toolkit.eol();
-				}
-			}
-
-			if (verbose) {
-				if (loaderLoader == parent) {
-					toolkit.green("[SAME]");
-				} else {
-					toolkit.cyan("[DIFF]");
-				}
-			}
-
-			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
-		}
-
-	}
-
-	private void printClassloaderListEntry(final String loaderName, final String parentName, final String loaderLoaderName) {
-		final int padsize1 = 80;
-		final int padsize2 = 80;
-		final String typeLoader = " loader: ";
-		final String typeParent = " parent: ";
-		final String typeLoaderLoader = " loaderLoader: ";
-
-		printClassloaderListEntry(loaderName, typeLoader, padsize1);
-		printClassloaderListEntry(parentName, typeParent, padsize2);
-		printClassloaderListEntry(loaderLoaderName, typeLoaderLoader, 1);
-
-		toolkit.eol();
-	}
-
-	private void printClassloaderListEntry(final String loaderName, final String type, final int padsize) {
-		toolkit.white(type);
-		toolkit.bold(AnsiPrintToolkit.padRight(loaderName, padsize));
-	}
-
-	private Set<ClassLoader> getClassloaders() {
-		final Set<ClassLoader> classloaders = new HashSet<ClassLoader>();
-		final int classesByNull = 0;
-		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
-			final ClassLoader classloader = clazz.getClassLoader();
-			// if (classloader == null) {
-			// toolkit.yellow("Bootstrap classloader found:" + classloader + ":clazz=" + clazz);
-			// toolkit.eol();
-			// classesByNull++;
-			// }
-			// toolkit.green("Classloader added:" + classloader);
-			// toolkit.eol();
-			// classloaders.add(classloader);
-			if (!classloaders.add(classloader)) {
-				toolkit.yellow("Classloader not added:" + classloader + ":clazz=" + clazz);
-				toolkit.eol();
-			} else {
-				toolkit.green("Classloader added:" + classloader + ":clazz=" + clazz);
-				toolkit.eol();
-			}
-
-		}
-		printClassloaderList(classloaders);
-		toolkit.eol();
-		toolkit.title("Making sure I got all classloaders!");
-		toolkit.subtitle("Comparing parents + getClassloader()");
-		for (final ClassLoader loader : classloaders) {
-			ClassLoader parent = null;
-			ClassLoader loaderLoader = null;
-
-			if (loader != null) {
-				parent = loader.getParent();
-				loaderLoader = loader.getClass().getClassLoader();
-			}
-
-			String loaderName;
-			if (loader != null) {
-				loaderName = loader.toString();
-			} else {
-				loaderName = "bootstrap (NULL)";
-			}
-
-			String parentName;
-			if (parent != null) {
-				parentName = parent.toString();
-			} else {
-				parentName = "null-parent";
-			}
-
-			String loaderLoaderName;
-			if (loaderLoader != null) {
-				loaderLoaderName = loaderLoader.toString();
-			} else {
-				loaderLoaderName = "null-loader";
-			}
-
-			if (!classloaders.contains(loaderLoader)) {
-				toolkit.red("NEWCLL->" + loaderLoaderName);
-				toolkit.eol();
-			} else {
-				// classloaders.
-				toolkit.blue("OLDCLL-->" + loaderLoaderName);
-				// toolkit.eol();
-			}
-			if (!classloaders.contains(parent)) {
-				toolkit.indent();
-				toolkit.red("NEWPCL->" + parentName);
-				toolkit.eol();
-			} else {
-				toolkit.indent();
-				toolkit.green("OLDPCL-->" + parentName);
-				toolkit.eol();
-			}
-
-			if (loaderLoader == parent) {
-				toolkit.magenta("SAME-->");
-			} else {
-				toolkit.yellow("DIFF-->");
-			}
-
-			final int padsize1 = 80;
-			final int padsize2 = 53;
-			toolkit.white("loader: ");
-			toolkit.bold(AnsiPrintToolkit.padRight(loaderName, padsize1));
-			toolkit.white(" parent: ");
-			toolkit.bold(AnsiPrintToolkit.padRight(parentName, padsize2));
-			toolkit.white(" loaderLoader: ");
-
-			toolkit.bold(AnsiPrintToolkit.padRight(loaderLoaderName, 1));
-
-			toolkit.eol();
-
-			// if (parent != null)
-			// toolkit.bold(parent.toString());
-			// else
-			// toolkit.bold("null");
-			//
-			// toolkit.white(" loaderLoader: ");
-			// if (loaderLoader != null)
-			// toolkit.bold(loaderLoader.toString());
-			// else
-			// toolkit.bold("null");
-			//
-			// if (loaderLoader == parent)
-			// toolkit.red("<-- HERE");
-			// toolkit.eol();
-		}
-
-		// toolkit.title("Bootstrap (NULL) CLASSLOADER LOADED:" + classesByNull + " out of " +
-		// RobustaJavaAgent.getInstrumentation().getAllLoadedClasses().length);
-
-		// TODO: It's possible that getAllLoadedClasses() does not get me all classloaders.
-		// I Might have to go through the CL and add parents too just to be safe...!
-		toolkit.cyan("Number of classloaders found in getClassloaders: " + classloaders.size());
-		toolkit.eol();
-
-		printClassloaderList(classloaders);
-
-		return classloaders;// includes NULL value
-	}
+	};
 
 	private Map<ClassLoader, ClassloaderNode> calculateClassloaderGraph() {
 		toolkit.red("CalculateClassloaderGraph");
 		toolkit.eol();
 
-		final Set<ClassLoader> classloaders = getClassloaders();
+		final Set<ClassLoader> classloaders = getAllClassloaders();
 
 		final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
 
@@ -808,6 +254,533 @@ public class DumpAction implements Action {
 		return classloaderGraph;
 	}
 
+	private void collectGarbage() {
+		final long time1 = System.currentTimeMillis();
+		toolkit.title("Garbage Collection");
+
+		System.gc();
+		try {
+			Thread.sleep(500);
+		} catch (final InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.gc();
+
+		final long time2 = System.currentTimeMillis();
+		toolkit.indent(2);
+		buffer.a("Garbage Collection in " + (time2 - time1) + " miliseconds");
+		toolkit.eol();
+	}
+
+	private int countDuplicates() {
+		final List<String> allClasses = new ArrayList<String>();
+		Set<String> classes;
+
+		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+			allClasses.add(clazz.getName());
+		}
+
+		classes = new HashSet<String>(allClasses);
+
+		return (allClasses.size() - classes.size());
+	}
+
+	private void dumpAllClasses() {
+		int i = 0;
+		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+			if (numbers) {
+				// System.out.print(++i + ":");
+				buffer.a(++i);
+				toolkit.separator();
+			}
+			if (classesWithCl) {
+				if (clazz.getClassLoader() != null) {
+					// System.out.print(clazz.getClassLoader().toString() + ":");
+					buffer.a(clazz.getClassLoader().toString());
+					toolkit.separator();
+				} else {
+					buffer.a("bootstrap");
+					// toolkit.eol();
+					toolkit.separator();
+				}
+			}
+			buffer.a(clazz.getName());
+			toolkit.eol();
+		}
+	}
+
+	public Object execute(final CommandSession session) throws Exception {
+		toolkit = new AnsiPrintToolkit();
+		buffer = toolkit.getBuffer();
+
+		try {
+			if (debug) {
+				verbose = true;
+			}
+
+			// Garbage collect BEFORE any calculations
+			if (gc) {
+				collectGarbage();
+			}
+
+			if (all) {
+				stats = true;
+				classes = true;
+				treeLoading = true;
+				treeDelegation = true;
+				list = true;
+				numbers = true;
+				classesWithCl = true;
+			}
+
+			// If nothing is set, we should print stats
+			if (!classes && !treeDelegation && !treeLoading && !stats && !duplicates && !duplicatesByCL && !gc && !list) {
+				stats = true;
+			}
+
+			if (classes) {
+				dumpAllClasses();
+			}
+
+			if (duplicates || duplicatesByCL) {
+				printDuplicateClasses();
+			}
+
+			if (list) {
+				printClassloaderList();
+			}
+			if (treeDelegation) {
+				printClassloaderDelegationTree();
+			}
+			if (treeLoading) {
+				// printClassloaderTreeLoading();
+				throw new UnsupportedOperationException();
+			}
+			if (stats) {
+				printStats();
+			}
+
+		} catch (final Throwable e) {
+			// Send stacktrace to buffer!
+			final String stackTrace = Throwables.getStackTraceAsString(e);
+			toolkit.red(stackTrace);
+			toolkit.eol();
+		} finally {
+			// Flush buffer to console
+			final PrintStream stream = System.out;
+			stream.println(toolkit.getBuffer().toString());
+
+			// release buffer and toolkit (just in case)
+			toolkit = null;
+			buffer = null;
+		}
+		return null;
+	}
+
+	private Set<ClassLoader> getAllClassloaders() {
+
+		final Set<ClassLoader> allClassloaders = new HashSet<ClassLoader>();
+		Set<ClassLoader> newFound = new HashSet<ClassLoader>(getInitialClassloaders());
+
+		if (verbose) {
+			toolkit.title("Find missing classloaders (they appear in red)");
+		}
+
+		// breaks loop when no more classloaders are found
+		boolean found_new_loader = false;
+
+		// used for stats only
+		int iterations = 0;
+
+		if (newFound.size() > 0) {
+			found_new_loader = true;
+		}
+		if (debug) {
+			toolkit.debug("Initial ClassLoader size: " + newFound.size());
+		}
+
+		while (found_new_loader) {
+
+			final List<ClassLoader> currentClassloaders = new ArrayList<ClassLoader>(newFound);
+
+			// Start with an empty new found list!
+			newFound = new HashSet<ClassLoader>();
+
+			for (final ClassLoader loader : currentClassloaders) {
+				final ClassLoader parent = getClassLoaderParent(loader);
+				final ClassLoader loaderLoader = getClassLoaderLoader(loader);
+
+				final String loaderName = getClassLoaderName(loader);
+				final String parentName = getClassLoaderParentName(loader);
+				final String loaderLoaderName = getClassLoaderLoaderName(loader);
+
+				iterations++;
+
+				if (debug) {
+					toolkit.debug("NAMES loader: " + loader + " loaderLoader: " + loaderLoader + " parent: " + parent);
+				}
+
+				// If new classloader found!
+				// if (!currentClassloaders.contains(loaderLoader)) {
+				if (!isClassLoaderKnown(allClassloaders, currentClassloaders, newFound, loaderLoader)) {
+					if (verbose) {
+						toolkit.urgent("NEW Missing ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: " + loaderLoader);
+					}
+					newFound.add(loaderLoader);
+					if (debug) {
+						toolkit.debug("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
+					}
+				} else {
+					// classloaders.
+					if (debug) {
+						toolkit.blue("OLDCLL--> " + loaderLoaderName);
+					}
+				}
+
+				// If new classloader found!
+				// if (!classloaders.contains(parent)) { // New classloader!
+				if (!isClassLoaderKnown(allClassloaders, currentClassloaders, newFound, parent)) {
+					toolkit.indent();
+					if (verbose) {
+						toolkit.urgent("NEW Missing ParentClassLoader FOUND --> " + parentName + " value: " + parent);
+					}
+					newFound.add(parent);
+					if (debug) {
+						toolkit.debug("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
+					}
+				} else {
+					if (debug) {
+						toolkit.indent();
+						toolkit.blue("OLDPCL--> " + parentName);
+						toolkit.eol();
+					}
+				}
+
+				if (verbose) {
+					if (loaderLoader == parent) {
+						toolkit.green("[SAME]");
+					} else {
+						toolkit.cyan("[DIFF]");
+					}
+				}
+				if (verbose) {
+					printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+				}
+			}
+			if (debug) {
+				toolkit.urgent("Initial ClassLoader size: " + currentClassloaders.size() + " New found list of Classloaders: " + newFound.size());
+				toolkit.debug("Iterations: " + iterations);
+				toolkit.debug("Last value added to currentClassLoaders: " + currentClassloaders.get(currentClassloaders.size() - 1));
+			}
+
+			for (final ClassLoader loader : newFound) {
+				final String loaderName = getClassLoaderName(loader);
+				final String parentName = getClassLoaderParentName(loader);
+				final String loaderLoaderName = getClassLoaderLoaderName(loader);
+				if (debug) {
+					toolkit.yellow("New Found entry to be checked: ");
+				}
+				if (debug) {
+					printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+				}
+			}
+
+			allClassloaders.addAll(currentClassloaders);// Save current set of classloaders
+
+			if (newFound.size() == 0) {
+				found_new_loader = false;
+			}
+		}
+		return allClassloaders;
+	}
+
+	/*
+	 * DO NOT USE: to be removed
+	 */
+	private Set<ClassLoader> getAllClassloaders_OLD() {
+		final Set<ClassLoader> initialClassloaders = getInitialClassloaders();
+		final List<ClassLoader> classloaders = new ArrayList<ClassLoader>(initialClassloaders);
+		final List<ClassLoader> newFound = new ArrayList<ClassLoader>();
+		// final List<ClassLoader> classloaders = new ArrayList<ClassLoader>(this.getInitialClassloaders());
+
+		if (debug) {
+			toolkit.blue("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
+			toolkit.eol();
+		}
+		final ListIterator<ClassLoader> iter = classloaders.listIterator();
+
+		int iterations = 0;
+		// for (final ClassLoader loader : classloaders) {
+		while (iter.hasNext()) {
+			iterations++;
+			final ClassLoader loader = iter.next();
+			final ClassLoader parent = getClassLoaderParent(loader);
+			final ClassLoader loaderLoader = getClassLoaderLoader(loader);
+
+			final String loaderName = getClassLoaderName(loader);
+			final String parentName = getClassLoaderParentName(loader);
+			final String loaderLoaderName = getClassLoaderLoaderName(loader);
+			if (debug) {
+				toolkit.debug("NAMES loader: " + loader + " loaderLoader: " + loaderLoader + " parent: " + parent);
+			}
+			if (!classloaders.contains(loaderLoader)) { // New classloader found!
+				toolkit.urgent("NEW Missing ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: " + loaderLoader);
+				// classloaders.add(loader); // this will be included into the iteraction
+				iter.add(loaderLoader); // this will be included into the iteraction
+				newFound.add(loaderLoader);
+				toolkit.urgent("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
+			} else {
+				// classloaders.
+				if (debug) {
+					toolkit.blue("OLDCLL--> " + loaderLoaderName);
+				}
+			}
+			if (!classloaders.contains(parent)) { // New classloader!
+				toolkit.indent();
+				toolkit.urgent("NEW Missing ParentClassLoader FOUND --> " + parentName + " value: " + parent);
+				// toolkit.urgent(" PARENT: " + parent.);
+				// classloaders.add(loader); // this will be included into the iteraction
+				iter.add(parent); // this will be included into the iteraction
+				newFound.add(parent);
+				toolkit.urgent("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders: " + classloaders.size());
+			} else {
+				if (debug) {
+					toolkit.indent();
+					toolkit.blue("OLDPCL--> " + parentName);
+					toolkit.eol();
+				}
+			}
+
+			if (verbose) {
+				if (loaderLoader == parent) {
+					toolkit.green("[SAME]");
+				} else {
+					toolkit.cyan("[DIFF]");
+				}
+			}
+
+			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+		}
+		if (debug) {
+			toolkit.debug("Initial ClassLoader size: " + initialClassloaders.size() + " ArrayList of Classloaders New size is: " + classloaders.size());
+			toolkit.debug("Iterations: " + iterations);
+			toolkit.debug("Last value: " + classloaders.get(classloaders.size() - 1));
+			// toolkit.debug("Last value: " + classloaders.get(classloaders.size()));
+		}
+
+		for (final ClassLoader loader : newFound) {
+			// final ClassLoader parent = getClassLoaderParent(loader);
+			// final ClassLoader loaderLoader = getClassLoaderLoader(loader);
+
+			final String loaderName = getClassLoaderName(loader);
+			final String parentName = getClassLoaderParentName(loader);
+			final String loaderLoaderName = getClassLoaderLoaderName(loader);
+
+			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+		}
+
+		return null;
+	}
+
+	private ClassLoader getClassLoaderLoader(final ClassLoader loader) {
+		final ClassLoader loaderLoader;
+		if (loader != null) {
+			loaderLoader = loader.getClass().getClassLoader();
+		} else {
+			loaderLoader = null;
+		}
+		return loaderLoader;
+	}
+
+	private String getClassLoaderLoaderName(final ClassLoader loader) {
+		final ClassLoader loaderLoader;
+		if (loader != null) {
+			loaderLoader = loader.getClass().getClassLoader();
+		} else {
+			loaderLoader = null;
+		}
+		return getGenericClassLoaderName(loaderLoader, "null-loader");
+	}
+
+	private String getClassLoaderName(final ClassLoader loader) {
+		return getGenericClassLoaderName(loader, "bootstrap (NULL)");
+	}
+
+	private ClassLoader getClassLoaderParent(final ClassLoader loader) {
+		final ClassLoader parent;
+		if (loader != null) {
+			parent = loader.getParent();
+		} else {
+			parent = null;
+		}
+		return parent;
+	}
+
+	private String getClassLoaderParentName(final ClassLoader loader) {
+		final ClassLoader parent;
+		if (loader != null) {
+			parent = loader.getParent();
+		} else {
+			parent = null;
+		}
+		return getGenericClassLoaderName(parent, "null-parent");
+	}
+
+	private Set<ClassLoader> getClassloaders_OLD() {
+		final Set<ClassLoader> classloaders = new HashSet<ClassLoader>();
+
+		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+			final ClassLoader classloader = clazz.getClassLoader();
+			if (!classloaders.add(classloader)) {
+				toolkit.yellow("Classloader not added:" + classloader + ":clazz=" + clazz);
+				toolkit.eol();
+			} else {
+				toolkit.green("Classloader added:" + classloader + ":clazz=" + clazz);
+				toolkit.eol();
+			}
+
+		}
+		printClassloaderList(classloaders);
+		toolkit.eol();
+		toolkit.title("Making sure I got all classloaders!");
+		toolkit.subtitle("Comparing parents + getClassloader()");
+		for (final ClassLoader loader : classloaders) {
+			ClassLoader parent = null;
+			ClassLoader loaderLoader = null;
+
+			if (loader != null) {
+				parent = loader.getParent();
+				loaderLoader = loader.getClass().getClassLoader();
+			}
+
+			String loaderName;
+			if (loader != null) {
+				loaderName = loader.toString();
+			} else {
+				loaderName = "bootstrap (NULL)";
+			}
+
+			String parentName;
+			if (parent != null) {
+				parentName = parent.toString();
+			} else {
+				parentName = "null-parent";
+			}
+
+			String loaderLoaderName;
+			if (loaderLoader != null) {
+				loaderLoaderName = loaderLoader.toString();
+			} else {
+				loaderLoaderName = "null-loader";
+			}
+
+			if (!classloaders.contains(loaderLoader)) {
+				toolkit.red("NEWCLL->" + loaderLoaderName);
+				toolkit.eol();
+			} else {
+				// classloaders.
+				toolkit.blue("OLDCLL-->" + loaderLoaderName);
+				// toolkit.eol();
+			}
+			if (!classloaders.contains(parent)) {
+				toolkit.indent();
+				toolkit.red("NEWPCL->" + parentName);
+				toolkit.eol();
+			} else {
+				toolkit.indent();
+				toolkit.green("OLDPCL-->" + parentName);
+				toolkit.eol();
+			}
+
+			if (loaderLoader == parent) {
+				toolkit.magenta("SAME-->");
+			} else {
+				toolkit.yellow("DIFF-->");
+			}
+
+			final int padsize1 = 80;
+			final int padsize2 = 53;
+			toolkit.white("loader: ");
+			toolkit.bold(AnsiPrintToolkit.padRight(loaderName, padsize1));
+			toolkit.white(" parent: ");
+			toolkit.bold(AnsiPrintToolkit.padRight(parentName, padsize2));
+			toolkit.white(" loaderLoader: ");
+
+			toolkit.bold(AnsiPrintToolkit.padRight(loaderLoaderName, 1));
+
+			toolkit.eol();
+		}
+
+		// TODO: It's possible that getAllLoadedClasses() does not get me all classloaders.
+		// I Might have to go through the CL and add parents too just to be safe...!
+		toolkit.cyan("Number of classloaders found in getClassloaders: " + classloaders.size());
+		toolkit.eol();
+
+		printClassloaderList(classloaders);
+
+		return classloaders;// includes NULL value
+	}
+
+	private String getGenericClassLoaderName(final ClassLoader loader, final String nullValueString) {
+		String loaderName;
+		if (loader != null) {
+			loaderName = loader.toString();
+		} else {
+			loaderName = nullValueString;
+		}
+		return loaderName;
+	}
+
+	/*
+	 * This method gets all loaded classes from JVM agent and for each class gets its classloader. Not all classloaders
+	 * are found, a few are missing and require navegating the classloader tree.
+	 */
+	private Set<ClassLoader> getInitialClassloaders() {
+
+		if (verbose) {
+			toolkit.title("Getting initial classloaders");
+		}
+
+		final Set<ClassLoader> classloaders = new HashSet<ClassLoader>();
+
+		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+			final ClassLoader classloader = clazz.getClassLoader();
+			boolean isAdded;
+
+			if (!classloaders.add(classloader)) { // add classloader to set
+				isAdded = false;
+			} else {
+				isAdded = true;
+			}
+
+			if (verbose) { // Print loaders that are added and are not
+				if (!isAdded) {
+					if (debug) {
+						toolkit.yellow("Classloader not added:" + classloader + ":clazz=" + clazz);
+						toolkit.eol();
+					}
+				} else {
+					toolkit.green("Classloader added:" + classloader + ":clazz=" + clazz);
+					toolkit.eol();
+				}
+			}
+		}
+		if (debug) {
+			toolkit.eol();
+			buffer.a("Number of initial class loaders found: " + classloaders.size());
+			toolkit.eol();
+		}
+		return classloaders;
+	}
+
+	private boolean isClassLoaderKnown(final Collection<ClassLoader> c1, final Collection<ClassLoader> c2, final Collection<ClassLoader> c3, final ClassLoader loader) {
+		if (c1.contains(loader) || c2.contains(loader) || c3.contains(loader)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	private void printClassloaderDelegationTree() {
 		toolkit.red("printClassloaderTree");
 		toolkit.eol();
@@ -852,15 +825,58 @@ public class DumpAction implements Action {
 		toolkit.eol();
 		toolkit.title("*** Classloader hierarchy ***");
 		printClassloaderNode(toplevelNode, 2);
+	}
 
-		// // Print classloaders
-		// int i = 0;
-		// for (String loader : classloaders) {
-		// if (numbers) {
-		// System.out.print(++i + ":");
-		// }
-		// System.out.println(loader);
-		// }
+	private void printClassloaderList() {
+		Set<ClassLoader> classloaders = getAllClassloaders();
+
+		printClassloaderList(classloaders);
+
+	}
+
+	private void printClassloaderList(final Set<ClassLoader> classloaders) {
+		// toolkit.eol();
+		toolkit.title("ClassLoader List showing Parent and Loading classloaders");
+
+		for (final ClassLoader loader : classloaders) {
+			final ClassLoader parent = getClassLoaderParent(loader);
+			final ClassLoader loaderLoader = getClassLoaderLoader(loader);
+
+			final String loaderName = getClassLoaderName(loader);
+			final String parentName = getClassLoaderParentName(loader);
+			final String loaderLoaderName = getClassLoaderLoaderName(loader);
+
+			if (verbose) {
+				if (loaderLoader == parent) {
+					toolkit.green("[SAME]");
+				} else {
+					toolkit.cyan("[DIFF]");
+				}
+			}
+			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+		}
+		if (verbose)
+			toolkit.subtitle("Number of classloaders " + classloaders.size());
+
+	}
+
+	private void printClassloaderListEntry(final String loaderName, final String type, final int padsize) {
+		toolkit.white(type);
+		toolkit.bold(AnsiPrintToolkit.padRight(loaderName, padsize));
+	}
+
+	private void printClassloaderListEntry(final String loaderName, final String parentName, final String loaderLoaderName) {
+		final int padsize1 = 81;
+		final int padsize2 = 53;
+		final String typeLoader = " loader: ";
+		final String typeParent = " parent: ";
+		final String typeLoaderLoader = " loaderLoader: ";
+
+		printClassloaderListEntry(loaderName, typeLoader, padsize1);
+		printClassloaderListEntry(parentName, typeParent, padsize2);
+		printClassloaderListEntry(loaderLoaderName, typeLoaderLoader, 1);
+
+		toolkit.eol();
 	}
 
 	private void printClassloaderNode(final ClassloaderNode node, final int indents) {
@@ -878,51 +894,6 @@ public class DumpAction implements Action {
 			printClassloaderNode(child, (indents) + 2);
 		}
 	}
-
-	private void dumpAllClasses() {
-		int i = 0;
-		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
-			if (numbers) {
-				// System.out.print(++i + ":");
-				buffer.a(++i);
-				toolkit.separator();
-			}
-			if (classesWithCl) {
-				if (clazz.getClassLoader() != null) {
-					// System.out.print(clazz.getClassLoader().toString() + ":");
-					buffer.a(clazz.getClassLoader().toString());
-					toolkit.separator();
-				} else {
-					buffer.a("bootstrap");
-					// toolkit.eol();
-					toolkit.separator();
-				}
-			}
-			buffer.a(clazz.getName());
-			toolkit.eol();
-		}
-	}
-
-	public static final Comparator<Class<?>> classComparator = new Comparator<Class<?>>() {
-		// @Override (whyyy doesn't it work?
-		public int compare(final Class<?> c1, final Class<?> c2) {
-			return c1.getName().compareTo(c2.getName());
-		}
-		// @Override
-		// public int compare(Object c1, Object c2) {
-		// return c1.getName().compareTo(c2.getName());
-		// }
-	};
-
-	public static final Comparator<Class<?>> classloaderComparator = new Comparator<Class<?>>() {
-		// @Override (whyyy doesn't it work? I should have to override...
-		public int compare(final Class<?> c1, final Class<?> c2) {
-			final String cl1 = c1.getClassLoader().toString();
-			final String cl2 = c2.getClassLoader().toString();
-
-			return cl1.compareTo(cl2);
-		}
-	};
 
 	private void printDuplicateClasses() {
 		// Are there any duplicates?
@@ -987,7 +958,7 @@ public class DumpAction implements Action {
 		final int indent = 2;
 
 		// Do this before printing stats to avoid mixed output messages
-		final Set<ClassLoader> classloaders = getClassloaders();
+		final Set<ClassLoader> allClassloaders = getAllClassloaders();
 
 		// title
 		toolkit.eol();
@@ -1000,30 +971,17 @@ public class DumpAction implements Action {
 		toolkit.bold(RobustaJavaAgent.getInstrumentation().getAllLoadedClasses().length);
 		toolkit.eol();
 
-		// Count classloaders
-		toolkit.indent(indent);
-		buffer.a("Total number of classloaders: ");
-		toolkit.bold(classloaders.size());
-		toolkit.eol();
-
 		// Count duplicates
 		toolkit.indent(indent);
 		buffer.a("Total number of duplicated classes: ");
 		toolkit.bold(countDuplicates());
 		toolkit.eol();
+
+		// Count classloaders
+		toolkit.indent(indent);
+		buffer.a("Total number of classloaders (including hidden): ");
+		toolkit.bold(allClassloaders.size());
+		toolkit.eol();
+
 	}
-
-	private int countDuplicates() {
-		final List<String> allClasses = new ArrayList<String>();
-		Set<String> classes;
-
-		for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
-			allClasses.add(clazz.getName());
-		}
-
-		classes = new HashSet<String>(allClasses);
-
-		return (allClasses.size() - classes.size());
-	}
-
 }
