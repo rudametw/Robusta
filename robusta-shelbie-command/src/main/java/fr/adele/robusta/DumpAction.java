@@ -4,7 +4,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,6 +20,9 @@ import org.fusesource.jansi.Ansi;
 
 import com.google.common.base.Throwables;
 
+import fr.adele.robusta.dependencygraph.ClassLoaderUtils;
+import fr.adele.robusta.dependencygraph.ClassLoaderUtils.LOADER_HIERARCHY;
+import fr.adele.robusta.dependencygraph.ClassUtils;
 import fr.adele.robusta.dependencygraph.ClassloaderNode;
 import fr.adele.robusta.internal.util.AnsiPrintToolkit;
 
@@ -42,6 +44,13 @@ public class DumpAction implements Action {
 			required = false,
 			description = "Print classloader tree")
 	private boolean treeDelegation = false;
+
+	@Option(name = "-sort",
+			aliases = { "--sort" },
+			required = false,
+			description = "Print classloader tree")
+	private boolean sort = false;
+
 
 	@Option(name = "-l",
 			aliases = { "--list", "--classloader-list" },
@@ -113,43 +122,199 @@ public class DumpAction implements Action {
 	AnsiPrintToolkit toolkit;
 	Ansi buffer;
 
-	public static final Comparator<Class<?>> classComparator = new Comparator<Class<?>>() {
-		// @Override (whyyy doesn't it work?
-		public int compare(final Class<?> c1, final Class<?> c2) {
-			return c1.getName().compareTo(c2.getName());
+	public Object execute(final CommandSession session) throws Exception {
+		toolkit = new AnsiPrintToolkit();
+		buffer = toolkit.getBuffer();
+
+		try {
+			if (debug) {
+				verbose = true;
+			}
+
+			// Garbage collect BEFORE any calculations
+			if (gc) {
+				collectGarbage();
+			}
+
+			if (all) {
+				stats = true;
+				classes = true;
+				treeLoading = true;
+				treeDelegation = true;
+				list = true;
+				numbers = true;
+				classesWithCl = true;
+			}
+
+			// If nothing is set, we should print stats
+			if (!classes && !treeDelegation && !treeLoading && !stats && !duplicates && !duplicatesByCL && !gc && !list) {
+				stats = true;
+			}
+
+			if (classes) {
+				dumpAllClasses();
+			}
+
+			if (duplicates || duplicatesByCL) {
+				printDuplicateClasses();
+			}
+
+			if (list) {
+				printClassloaderList();
+			}
+			if (treeDelegation) {
+				printClassloaderTree(LOADER_HIERARCHY.PARENT);
+			}
+			if (treeLoading) {
+				// printClassloaderTreeLoading();
+				printClassloaderTree(LOADER_HIERARCHY.LOADER);
+				// throw new UnsupportedOperationException();
+			}
+			if (stats) {
+				printStats();
+			}
+
+		} catch (final Throwable e) {
+			// Send stacktrace to buffer!
+			final String stackTrace = Throwables.getStackTraceAsString(e);
+			toolkit.red(stackTrace);
+			toolkit.eol();
+		} finally {
+			// Flush buffer to console
+			final PrintStream stream = System.out;
+			stream.println(toolkit.getBuffer().toString());
+
+			// release buffer and toolkit (just in case)
+			toolkit = null;
+			buffer = null;
 		}
-		// @Override
-		// public int compare(Object c1, Object c2) {
-		// return c1.getName().compareTo(c2.getName());
-		// }
-	};
+		return null;
+	}
 
-	public static final Comparator<Class<?>> classloaderComparator = new Comparator<Class<?>>() {
-		// @Override (whyyy doesn't it work? I should have to override...
-		public int compare(final Class<?> c1, final Class<?> c2) {
-			final String cl1 = c1.getClassLoader().toString();
-			final String cl2 = c2.getClassLoader().toString();
+	private void printClassloaderTreeLoading() {
+		// final Map<ClassLoader, ClassloaderNode> clGraph = calculateClassloaderGraph();
 
-			return cl1.compareTo(cl2);
-		}
-	};
+		final Map<ClassLoader, ClassloaderNode> clGraph = calculateClassloaderLoaderGraph();
 
-	private Map<ClassLoader, ClassloaderNode> calculateClassloaderGraph() {
-		toolkit.red("CalculateClassloaderGraph");
-		toolkit.eol();
+		toolkit.title("Printing classloader loader tree (how the classloaders were loaded)");
 
+		// toplevel classloader is always null
+		ClassloaderNode toplevelNode = clGraph.get(null);
+
+		printClassloaderLoaderNode(toplevelNode, 0);
+	}
+
+	private Map<ClassLoader, ClassloaderNode> calculateClassloaderLoaderGraph() {
 		final Set<ClassLoader> classloaders = getAllClassloaders();
-
 		final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
 
-		toolkit.red("CalculateClassloaderGraph");
-		toolkit.eol();
+		if (verbose)
+			toolkit.title("Calculate Classloader Loading Tree");
 
 		int countLoop = 0, countAdded = 0;
 
 		for (final ClassLoader loader : classloaders) {
-			toolkit.green("loader:" + loader);
+
+			if (debug) {
+				toolkit.green("loader:" + loader);
+				toolkit.eol();
+			}
+			countLoop++;
+
+			// check if node already exists
+			if (classloaderGraph.containsKey(loader)) {
+				final ClassloaderNode node = classloaderGraph.get(loader);
+
+				if (loader == null) { // we don't need to do anything, bootstrap node is already created and doesn't
+										// have a parent or a loader
+					if (debug) {
+						toolkit.subtitle("Found BOOTSTRAP (NULL) classloader!");
+					}
+					continue;
+				}
+
+				// check if parent is set
+				if (node.getParent() == null) {
+
+					// check if loaderLoader node exists
+					if (classloaderGraph.containsKey(loader.getClass().getClassLoader())) {
+						final ClassloaderNode loaderLoaderNode = classloaderGraph.get(loader.getClass().getClassLoader());
+
+						// set loaderLoader
+						node.setLoaderLoader(loaderLoaderNode);
+
+					} else {
+						// create parent and set
+						final ClassloaderNode loaderLoaderNode = new ClassloaderNode(loader.getClass().getClassLoader());
+						node.setLoaderLoader(loaderLoaderNode);// automatically adds child
+						// classloaderGraph.put(loader, node);
+						classloaderGraph.put(loaderLoaderNode.getClassloader(), loaderLoaderNode);
+						countAdded++;
+					}
+				} else { // not necessary because node and parent already exist (not sure if this can even happen!)
+					toolkit.urgent("ERROR: Node and loaderLoader already set!");
+					toolkit.eol();
+				}
+			} else { // node doesn't exist yet
+
+				if (loader == null) {
+					final ClassloaderNode node = new ClassloaderNode(loader);// has no parent node
+					classloaderGraph.put(loader, node);
+					countAdded++;
+					if (debug) {
+						toolkit.debug("Added bootstrap to map!");
+					}
+					continue;
+				}
+
+				// check to see if loaderLoader exists, if not create loaderLoader node first!
+				if (classloaderGraph.containsKey(loader.getClass().getClassLoader())) {
+					final ClassloaderNode loaderLoaderNode = classloaderGraph.get(loader.getClass().getClassLoader());
+					final ClassloaderNode node = new ClassloaderNode(loader);
+					node.setLoaderLoader(loaderLoaderNode);
+					classloaderGraph.put(loader, node);
+					countAdded++;
+				} else {
+					// empty parent for him, we'll get him later in the loop!
+					final ClassloaderNode loaderLoaderNode = new ClassloaderNode(loader.getClass().getClassLoader());
+					final ClassloaderNode node = new ClassloaderNode(loader);
+					node.setLoaderLoader(loaderLoaderNode);
+					classloaderGraph.put(loader, node);
+					classloaderGraph.put(loaderLoaderNode.getClassloader(), loaderLoaderNode);
+					countAdded++;
+					countAdded++;
+				}
+			}
+		}
+
+		if (verbose) {
+			toolkit.cyan("CountLoop: " + countLoop + " CountAdded: " + countAdded);
 			toolkit.eol();
+			toolkit.cyan("Number of classloaders found in getAllClassloaders: " + classloaders.size());
+			toolkit.eol();
+			toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
+			toolkit.eol();
+			toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: " + classloaderGraph.values().size());
+			toolkit.eol();
+		}
+		return classloaderGraph;
+	}
+
+	private Map<ClassLoader, ClassloaderNode> calculateClassloaderParentGraph() {
+		final Set<ClassLoader> classloaders = getAllClassloaders();
+		final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
+
+		if (verbose)
+			toolkit.title("Calculate Classloader Delegation Tree");
+
+		int countLoop = 0, countAdded = 0;
+
+		for (final ClassLoader loader : classloaders) {
+
+			if (debug) {
+				toolkit.green("loader:" + loader);
+				toolkit.eol();
+			}
 			countLoop++;
 
 			// check if node already exists
@@ -158,7 +323,9 @@ public class DumpAction implements Action {
 
 				if (loader == null) { // we don't need to do anything, bootstrap node is already created and doesn't
 										// have a parent
-					toolkit.subtitle("Found BOOTSTRAP (NULL) classloader!");
+					if (debug) {
+						toolkit.subtitle("Found BOOTSTRAP (NULL) classloader!");
+					}
 					continue;
 				}
 
@@ -187,10 +354,12 @@ public class DumpAction implements Action {
 			} else { // node doesn't exist yet
 
 				if (loader == null) {
-					final ClassloaderNode node = new ClassloaderNode(loader, null);// has no parent node
-					toolkit.subtitle("Added bootstrap to map!");
+					final ClassloaderNode node = new ClassloaderNode(loader);// has no parent node
 					classloaderGraph.put(loader, node);
 					countAdded++;
+					if (debug) {
+						toolkit.debug("Added bootstrap to map!");
+					}
 					continue;
 				}
 
@@ -200,13 +369,15 @@ public class DumpAction implements Action {
 					//
 					// }
 					final ClassloaderNode parentNode = classloaderGraph.get(loader.getParent());
-					final ClassloaderNode node = new ClassloaderNode(loader, parentNode);
+					final ClassloaderNode node = new ClassloaderNode(loader);
+					node.setParent(parentNode);
 					classloaderGraph.put(loader, node);
 					countAdded++;
 				} else {
 					// empty parent for him, we'll get him later in the loop!
 					final ClassloaderNode parentNode = new ClassloaderNode(loader.getParent());
-					final ClassloaderNode node = new ClassloaderNode(loader, parentNode);
+					final ClassloaderNode node = new ClassloaderNode(loader);
+					node.setParent(parentNode);
 					classloaderGraph.put(loader, node);
 					classloaderGraph.put(parentNode.getClassloader(), parentNode);
 					countAdded++;
@@ -215,41 +386,16 @@ public class DumpAction implements Action {
 			}
 		}
 
-		// PrintStream stream = System.out;
-		// stream.println(toolkit.getBuffer().toString());
-		toolkit.cyan("CountLoop: " + countLoop + " CountAdded: " + countAdded);
-		toolkit.eol();
-
-		toolkit.cyan("Number of classloaders found in getClassloaders: " + classloaders.size());
-		toolkit.eol();
-		toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
-		toolkit.eol();
-		toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: " + classloaderGraph.values().size());
-		toolkit.eol();
-
-		// toolkit.title("********");
-		// toolkit.title("********");
-		// // toolkit.eol();
-		//
-		// for (ClassLoader loader : classloaders) {
-		// toolkit.title("loader1:" + loader);
-		// }
-		// // stream.println(toolkit.getBuffer().toString());
-		//
-		// toolkit.title("********");
-		// toolkit.title("********");
-		// // toolkit.eol();
-		//
-		// for (ClassloaderNode node : classloaderGraph.values()) {
-		// toolkit.magenta("loader1:" + node.getClassloader());
-		// toolkit.eol();
-		// }
-		// // stream.println(toolkit.getBuffer().toString());
-		//
-		// toolkit.title("********");
-		// toolkit.title("********");
-		// toolkit.eol();
-
+		if (verbose) {
+			toolkit.cyan("CountLoop: " + countLoop + " CountAdded: " + countAdded);
+			toolkit.eol();
+			toolkit.cyan("Number of classloaders found in getAllClassloaders: " + classloaders.size());
+			toolkit.eol();
+			toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
+			toolkit.eol();
+			toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: " + classloaderGraph.values().size());
+			toolkit.eol();
+		}
 		return classloaderGraph;
 	}
 
@@ -308,74 +454,6 @@ public class DumpAction implements Action {
 		}
 	}
 
-	public Object execute(final CommandSession session) throws Exception {
-		toolkit = new AnsiPrintToolkit();
-		buffer = toolkit.getBuffer();
-
-		try {
-			if (debug) {
-				verbose = true;
-			}
-
-			// Garbage collect BEFORE any calculations
-			if (gc) {
-				collectGarbage();
-			}
-
-			if (all) {
-				stats = true;
-				classes = true;
-				treeLoading = true;
-				treeDelegation = true;
-				list = true;
-				numbers = true;
-				classesWithCl = true;
-			}
-
-			// If nothing is set, we should print stats
-			if (!classes && !treeDelegation && !treeLoading && !stats && !duplicates && !duplicatesByCL && !gc && !list) {
-				stats = true;
-			}
-
-			if (classes) {
-				dumpAllClasses();
-			}
-
-			if (duplicates || duplicatesByCL) {
-				printDuplicateClasses();
-			}
-
-			if (list) {
-				printClassloaderList();
-			}
-			if (treeDelegation) {
-				printClassloaderDelegationTree();
-			}
-			if (treeLoading) {
-				// printClassloaderTreeLoading();
-				throw new UnsupportedOperationException();
-			}
-			if (stats) {
-				printStats();
-			}
-
-		} catch (final Throwable e) {
-			// Send stacktrace to buffer!
-			final String stackTrace = Throwables.getStackTraceAsString(e);
-			toolkit.red(stackTrace);
-			toolkit.eol();
-		} finally {
-			// Flush buffer to console
-			final PrintStream stream = System.out;
-			stream.println(toolkit.getBuffer().toString());
-
-			// release buffer and toolkit (just in case)
-			toolkit = null;
-			buffer = null;
-		}
-		return null;
-	}
-
 	private Set<ClassLoader> getAllClassloaders() {
 
 		final Set<ClassLoader> allClassloaders = new HashSet<ClassLoader>();
@@ -406,12 +484,12 @@ public class DumpAction implements Action {
 			newFound = new HashSet<ClassLoader>();
 
 			for (final ClassLoader loader : currentClassloaders) {
-				final ClassLoader parent = getClassLoaderParent(loader);
-				final ClassLoader loaderLoader = getClassLoaderLoader(loader);
+				final ClassLoader parent = ClassLoaderUtils.getClassLoaderParent(loader);
+				final ClassLoader loaderLoader = ClassLoaderUtils.getClassLoaderLoader(loader);
 
-				final String loaderName = getClassLoaderName(loader);
-				final String parentName = getClassLoaderParentName(loader);
-				final String loaderLoaderName = getClassLoaderLoaderName(loader);
+				final String loaderName = ClassLoaderUtils.getClassLoaderName(loader);
+				final String parentName = ClassLoaderUtils.getClassLoaderParentName(loader);
+				final String loaderLoaderName = ClassLoaderUtils.getClassLoaderLoaderName(loader);
 
 				iterations++;
 
@@ -463,7 +541,7 @@ public class DumpAction implements Action {
 					}
 				}
 				if (verbose) {
-					printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+					ClassLoaderUtils.printClassloaderListEntry(toolkit, verbose, loaderName, parentName, loaderLoaderName);
 				}
 			}
 			if (debug) {
@@ -473,14 +551,14 @@ public class DumpAction implements Action {
 			}
 
 			for (final ClassLoader loader : newFound) {
-				final String loaderName = getClassLoaderName(loader);
-				final String parentName = getClassLoaderParentName(loader);
-				final String loaderLoaderName = getClassLoaderLoaderName(loader);
+				final String loaderName = ClassLoaderUtils.getClassLoaderName(loader);
+				final String parentName = ClassLoaderUtils.getClassLoaderParentName(loader);
+				final String loaderLoaderName = ClassLoaderUtils.getClassLoaderLoaderName(loader);
 				if (debug) {
 					toolkit.yellow("New Found entry to be checked: ");
 				}
 				if (debug) {
-					printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+					ClassLoaderUtils.printClassloaderListEntry(toolkit, debug, loaderName, parentName, loaderLoaderName);
 				}
 			}
 
@@ -491,60 +569,6 @@ public class DumpAction implements Action {
 			}
 		}
 		return allClassloaders;
-	}
-
-	private ClassLoader getClassLoaderLoader(final ClassLoader loader) {
-		final ClassLoader loaderLoader;
-		if (loader != null) {
-			loaderLoader = loader.getClass().getClassLoader();
-		} else {
-			loaderLoader = null;
-		}
-		return loaderLoader;
-	}
-
-	private String getClassLoaderLoaderName(final ClassLoader loader) {
-		final ClassLoader loaderLoader;
-		if (loader != null) {
-			loaderLoader = loader.getClass().getClassLoader();
-		} else {
-			loaderLoader = null;
-		}
-		return getGenericClassLoaderName(loaderLoader, "null-loader");
-	}
-
-	private String getClassLoaderName(final ClassLoader loader) {
-		return getGenericClassLoaderName(loader, "bootstrap (NULL)");
-	}
-
-	private ClassLoader getClassLoaderParent(final ClassLoader loader) {
-		final ClassLoader parent;
-		if (loader != null) {
-			parent = loader.getParent();
-		} else {
-			parent = null;
-		}
-		return parent;
-	}
-
-	private String getClassLoaderParentName(final ClassLoader loader) {
-		final ClassLoader parent;
-		if (loader != null) {
-			parent = loader.getParent();
-		} else {
-			parent = null;
-		}
-		return getGenericClassLoaderName(parent, "null-parent");
-	}
-
-	private String getGenericClassLoaderName(final ClassLoader loader, final String nullValueString) {
-		String loaderName;
-		if (loader != null) {
-			loaderName = loader.toString();
-		} else {
-			loaderName = nullValueString;
-		}
-		return loaderName;
 	}
 
 	/*
@@ -597,117 +621,82 @@ public class DumpAction implements Action {
 		}
 	}
 
-	private void printClassloaderDelegationTree() {
-		toolkit.red("printClassloaderTree");
-		toolkit.eol();
+	private void printClassloaderTree(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy) {
+		final Map<ClassLoader, ClassloaderNode> clGraph;
 
-		final Map<ClassLoader, ClassloaderNode> clGraph = calculateClassloaderGraph();
-		toolkit.red("printClassloaderTree");
-		toolkit.eol();
-
-		// find top classloader, named null!
-		toolkit.red("find top classloader, named null");
-		toolkit.eol();
-		// TODO: just get null from map, don't need to search around.
-		if (clGraph.containsKey(null)) {
-			toolkit.red("ERROR: Found null classloader");
-			toolkit.eol();
+		switch (hierarchy) {
+		case PARENT:
+			toolkit.title("Printing classloader delegation tree");
+			clGraph = calculateClassloaderParentGraph();
+			break;
+		case LOADER:
+			toolkit.title("Printing classloader loader tree (how the classloaders were loaded)");
+			clGraph = calculateClassloaderLoaderGraph();
+			break;
+		default:
+			clGraph = null;// fail fast
 		}
-		toolkit.red("find top classloader, named null v2");
 
-		ClassloaderNode toplevelNode = null;
-		boolean found = false;
-		for (final ClassloaderNode node : clGraph.values()) {
+		// toplevel classloader is always null
+		ClassloaderNode toplevelNode = clGraph.get(null);
 
-			if (node == null) {
-				toolkit.red("ERROR: Found null node, shouldn't be here");
-				toolkit.eol();
-				continue;
-			}
+		if (debug)
+			toolkit.debug("Printing using hierarchy: " + hierarchy);
 
-			// if (node.getClassloader().getParent() == null) {
-			if (node.getClassloader() == null) {
-				toolkit.green("Found toplevel cl");
-				toolkit.eol();
-				toplevelNode = node;
-				found = true;
-				if (found) {
-					toolkit.red("ERROR: Found another null classloaders");
-					toolkit.eol();
-				}
-				// break;
-			}
-		}
-		toolkit.eol();
-		toolkit.title("*** Classloader hierarchy ***");
-		printClassloaderNode(toplevelNode, 2);
+		int total = printClassloaderNode(hierarchy, toplevelNode, 0, 1);
+		if (debug)
+			toolkit.subtitle("Total number of printed classloaders: " + total);
+
 	}
 
 	private void printClassloaderList() {
-		Set<ClassLoader> classloaders = getAllClassloaders();
-
-		printClassloaderList(classloaders);
-
+		final Set<ClassLoader> classloaders = getAllClassloaders();
+		ClassLoaderUtils.printClassloaderList(toolkit, verbose, numbers, classloaders);
 	}
 
-	private void printClassloaderList(final Set<ClassLoader> classloaders) {
-		// toolkit.eol();
-		toolkit.title("ClassLoader List showing Parent and Loading classloaders");
-
-		for (final ClassLoader loader : classloaders) {
-			final ClassLoader parent = getClassLoaderParent(loader);
-			final ClassLoader loaderLoader = getClassLoaderLoader(loader);
-
-			final String loaderName = getClassLoaderName(loader);
-			final String parentName = getClassLoaderParentName(loader);
-			final String loaderLoaderName = getClassLoaderLoaderName(loader);
-
-			if (verbose) {
-				if (loaderLoader == parent) {
-					toolkit.green("[SAME]");
-				} else {
-					toolkit.cyan("[DIFF]");
-				}
-			}
-			printClassloaderListEntry(loaderName, parentName, loaderLoaderName);
+	private int printClassloaderNode(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy, final ClassloaderNode node, final int indents, int current_number) {
+		if (numbers) {
+			ClassLoaderUtils.printNumberBrackets(toolkit, current_number);
 		}
-		if (verbose)
-			toolkit.subtitle("Number of classloaders " + classloaders.size());
+		current_number++;
 
-	}
-
-	private void printClassloaderListEntry(final String loaderName, final String type, final int padsize) {
-		toolkit.white(type);
-		toolkit.bold(AnsiPrintToolkit.padRight(loaderName, padsize));
-	}
-
-	private void printClassloaderListEntry(final String loaderName, final String parentName, final String loaderLoaderName) {
-		final int padsize1 = 81;
-		final int padsize2 = 53;
-		final String typeLoader = " loader: ";
-		final String typeParent = " parent: ";
-		final String typeLoaderLoader = " loaderLoader: ";
-
-		printClassloaderListEntry(loaderName, typeLoader, padsize1);
-		printClassloaderListEntry(parentName, typeParent, padsize2);
-		printClassloaderListEntry(loaderLoaderName, typeLoaderLoader, 1);
-
-		toolkit.eol();
-	}
-
-	private void printClassloaderNode(final ClassloaderNode node, final int indents) {
-		// for (int i=0 ; i < indents ; i++){}
 		toolkit.indent(indents);
-
 		buffer.a(node.getName());
 		toolkit.eol();
 
-		if (node.getChildren() == null) {
-			return;
+		List<ClassloaderNode> children;
+
+		switch (hierarchy) {
+		case PARENT:
+			children = node.getChildrenParent();
+			break;
+		case LOADER:
+			children = node.getChildrenLoader();
+			break;
+		default:
+			children = null;// purposefully causes NPE in for-each
+			break;
 		}
 
-		for (final ClassloaderNode child : node.getChildren()) {
-			printClassloaderNode(child, (indents) + 2);
+		if(sort){
+			Collections.sort(children);
+		}
+		// for (final ClassloaderNode child : node.getChildrenParent()) {
+		// current_number = printClassloaderDelegateNode(hierarchy, child, (indents) + 3, current_number);
+		// }
+		for (final ClassloaderNode child : children) {
+			current_number = printClassloaderNode(hierarchy, child, (indents) + 3, current_number);
+		}
+		return current_number;
+	}
+
+	private void printClassloaderLoaderNode(final ClassloaderNode node, final int indents) {
+		toolkit.indent(indents);
+		buffer.a(node.getName());
+		toolkit.eol();
+
+		for (final ClassloaderNode child : node.getChildrenLoader()) {
+			printClassloaderLoaderNode(child, (indents) + 3);
 		}
 	}
 
@@ -746,9 +735,9 @@ public class DumpAction implements Action {
 		}
 		// Collections.sort
 		if (!duplicatesByCL) {
-			Collections.sort(duplicates, classComparator);
+			Collections.sort(duplicates, ClassUtils.ClassComparator);
 		} else {
-			Collections.sort(duplicates, classloaderComparator);
+			Collections.sort(duplicates, ClassLoaderUtils.ClassloaderComparator);
 		}
 
 		// Print duplicates

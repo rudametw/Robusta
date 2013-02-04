@@ -9,7 +9,7 @@ import java.lang.ClassLoader;
  * provides the Comparable interface for sorting by inheritance hierarchy.
  */
 
-public class ClassloaderNode {
+public class ClassloaderNode implements Comparable<ClassloaderNode> {
 	// implements Comparable{
 
 	private final ClassLoader loader;
@@ -17,25 +17,35 @@ public class ClassloaderNode {
 	// private final ClassloaderNode parent;
 	private ClassloaderNode parent;
 
-	private List<ClassloaderNode> children;
+	private ClassloaderNode loaderLoader;
 
-	public ClassloaderNode(final ClassLoader loader, final ClassloaderNode parent) {
-		this.loader = loader;
-		this.parent = parent;
+	private final List<ClassloaderNode> childrenParent = new ArrayList<ClassloaderNode>();;
 
-		if (parent != null)
-			parent.addChild(this);
-	}
+	private final List<ClassloaderNode> childrenLoader = new ArrayList<ClassloaderNode>();;
 
+	// public ClassloaderNode(final ClassLoader loader, final ClassloaderNode parent, final ClassloaderNode
+	// loaderLoader) {
+	// public ClassloaderNode(final ClassLoader loader, final ClassloaderNode parent) {
+	//
+	// this.loader = loader;
+	// this.parent = parent;
+	// // this.loaderLoader = loaderLoader;
+	//
+	// if (parent != null)
+	// parent.addChild(this);
+	// }
+
+	// TODO: Can loader => NULL?
 	public ClassloaderNode(final ClassLoader loader) {
 		this.loader = loader;
 	}
 
 	public boolean addChild(final ClassloaderNode clNode) {
-		if (children == null) {
-			children = new ArrayList<ClassloaderNode>();
-		}
-		return children.add(clNode);
+		return childrenParent.add(clNode);
+	}
+
+	public boolean addChildLoader(final ClassloaderNode clNode) {
+		return childrenLoader.add(clNode);
 	}
 
 	public ClassloaderNode getParent() {
@@ -48,11 +58,27 @@ public class ClassloaderNode {
 		this.parent = parent;
 	}
 
-	public List<ClassloaderNode> getChildren() {
-		return this.children;
+	public ClassloaderNode getLoaderLoader() {
+		return loaderLoader;
+	}
+
+	public void setLoaderLoader(ClassloaderNode loaderLoader) {
+		if (loaderLoader != null)
+			loaderLoader.addChildLoader(this);
+		this.loaderLoader = loaderLoader;
+	}
+
+	public List<ClassloaderNode> getChildrenParent() {
+		return this.childrenParent;
+	}
+
+	public List<ClassloaderNode> getChildrenLoader() {
+		return this.childrenLoader;
 	}
 
 	public boolean equals(final Object obj) {
+		if (obj == null)
+			return false;
 		return ((ClassloaderNode) obj).getClassloader().equals(this.loader);
 	}
 
@@ -71,7 +97,14 @@ public class ClassloaderNode {
 	}
 
 	public String toString() {
-		return new String(loader + ":" + parent + ":" + children.toString());
+		// return new String(loader + ":" + parent + ":" + children.toString() + ":" + childrenLoader.toString());
+		return new String(this.getName() + ":" + parent.getName() + ":" + loaderLoader.getName() + ":" + "childrenLoader=" + childrenParent.toString() + ":" + "childrenLoader="
+				+ childrenLoader.toString());
+
+	}
+
+	public int compareTo(ClassloaderNode node) {
+		return node.getName().compareTo(getName());//compare string names
 	}
 
 	/**
