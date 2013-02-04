@@ -191,19 +191,6 @@ public class DumpAction implements Action {
 		return null;
 	}
 
-	private void printClassloaderTreeLoading() {
-		// final Map<ClassLoader, ClassloaderNode> clGraph = calculateClassloaderGraph();
-
-		final Map<ClassLoader, ClassloaderNode> clGraph = calculateClassloaderLoaderGraph();
-
-		toolkit.title("Printing classloader loader tree (how the classloaders were loaded)");
-
-		// toplevel classloader is always null
-		ClassloaderNode toplevelNode = clGraph.get(null);
-
-		printClassloaderLoaderNode(toplevelNode, 0);
-	}
-
 	private Map<ClassLoader, ClassloaderNode> calculateClassloaderLoaderGraph() {
 		final Set<ClassLoader> classloaders = getAllClassloaders();
 		final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
@@ -688,16 +675,6 @@ public class DumpAction implements Action {
 			current_number = printClassloaderNode(hierarchy, child, (indents) + 3, current_number);
 		}
 		return current_number;
-	}
-
-	private void printClassloaderLoaderNode(final ClassloaderNode node, final int indents) {
-		toolkit.indent(indents);
-		buffer.a(node.getName());
-		toolkit.eol();
-
-		for (final ClassloaderNode child : node.getChildrenLoader()) {
-			printClassloaderLoaderNode(child, (indents) + 3);
-		}
 	}
 
 	private void printDuplicateClasses() {
