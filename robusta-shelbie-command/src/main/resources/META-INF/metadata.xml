@@ -22,6 +22,5 @@
   <!-- Creates an instance of the Action -->
   <shell:command-instance action="fr.adele.robusta.TestAction" />
   <shell:command-instance action="fr.adele.robusta.DumpAction" />
-
-
+  <shell:command-instance action="fr.adele.robusta.ClassAction" />
 </ipojo>

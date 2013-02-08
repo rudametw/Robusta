@@ -20,11 +20,14 @@ import org.fusesource.jansi.Ansi;
 
 import com.google.common.base.Throwables;
 
+import fr.adele.robusta.agent.RobustaJavaAgent;
 import fr.adele.robusta.dependencygraph.ClassLoaderUtils;
 import fr.adele.robusta.dependencygraph.ClassLoaderUtils.LOADER_HIERARCHY;
 import fr.adele.robusta.dependencygraph.ClassUtils;
 import fr.adele.robusta.dependencygraph.ClassloaderNode;
 import fr.adele.robusta.internal.util.AnsiPrintToolkit;
+
+//TODO: REMOVE PARTS THAT ARE USED FOR CLASSESS
 
 @Component
 @Command(name = "dump",
@@ -36,26 +39,32 @@ public class DumpAction implements Action {
 	@Option(name = "-t",
 			aliases = { "--tree", "--classloader-loading-tree" },
 			required = false,
-			description = "Print classloader tree")
+			description = "Print classloader tree (using how they were loaded by one another)")
 	private boolean treeLoading = false;
+
+	@Option(name = "-b",
+			aliases = { "--bundle", "--print-bundle-info" },
+			required = false,
+			description = "Print classloader tree (using how they were loaded by one another)")
+	private boolean bundle= false;
 
 	@Option(name = "-T",
 			aliases = { "--tree", "--classloader-delegation-tree" },
 			required = false,
-			description = "Print classloader tree")
+			description = "Print classloader tree (using how they delegate to one another)")
 	private boolean treeDelegation = false;
 
 	@Option(name = "-sort",
 			aliases = { "--sort" },
 			required = false,
-			description = "Print classloader tree")
+			description = "Sort output")
 	private boolean sort = false;
 
 
 	@Option(name = "-l",
 			aliases = { "--list", "--classloader-list" },
 			required = false,
-			description = "Print classloader tree")
+			description = "Print classloader table (list)")
 	private boolean list = false;
 
 	@Option(name = "-debug",
@@ -430,6 +439,8 @@ public class DumpAction implements Action {
 					// System.out.print(clazz.getClassLoader().toString() + ":");
 					buffer.a(clazz.getClassLoader().toString());
 					toolkit.separator();
+					toolkit.green(clazz.getClassLoader().getClass().getName());
+					toolkit.separator();
 				} else {
 					buffer.a("bootstrap");
 					// toolkit.eol();
@@ -638,7 +649,7 @@ public class DumpAction implements Action {
 
 	private void printClassloaderList() {
 		final Set<ClassLoader> classloaders = getAllClassloaders();
-		ClassLoaderUtils.printClassloaderList(toolkit, verbose, numbers, classloaders);
+		ClassLoaderUtils.printClassloaderList(toolkit, bundle, verbose, numbers, classloaders);
 	}
 
 	private int printClassloaderNode(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy, final ClassloaderNode node, final int indents, int current_number) {

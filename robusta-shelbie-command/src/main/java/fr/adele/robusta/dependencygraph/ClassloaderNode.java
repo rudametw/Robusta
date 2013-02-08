@@ -2,26 +2,36 @@ package fr.adele.robusta.dependencygraph;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.ClassLoader;
+
+import org.osgi.framework.BundleReference;
 
 /**
- * Class representing classloader node in the tree. Holds references to the classloaders children and parent, and
- * provides the Comparable interface for sorting by inheritance hierarchy.
+ * Class representing a classloader node in the classloader tree. Holds references to the classloaders children and
+ * parent, and provides the Comparable interface for sorting by inheritance hierarchy.
+ *
+ * @author rudametw
+ *
  */
-
 public class ClassloaderNode implements Comparable<ClassloaderNode> {
 	// implements Comparable{
 
+	public BundleReference getBundleReference() {
+		return bundleReference;
+	}
+
 	private final ClassLoader loader;
 
-	// private final ClassloaderNode parent;
 	private ClassloaderNode parent;
 
 	private ClassloaderNode loaderLoader;
 
-	private final List<ClassloaderNode> childrenParent = new ArrayList<ClassloaderNode>();;
+	private final boolean isBundle;
 
-	private final List<ClassloaderNode> childrenLoader = new ArrayList<ClassloaderNode>();;
+	private BundleReference bundleReference;
+
+	private final List<ClassloaderNode> childrenParent = new ArrayList<ClassloaderNode>();
+
+	private final List<ClassloaderNode> childrenLoader = new ArrayList<ClassloaderNode>();
 
 	// public ClassloaderNode(final ClassLoader loader, final ClassloaderNode parent, final ClassloaderNode
 	// loaderLoader) {
@@ -38,7 +48,26 @@ public class ClassloaderNode implements Comparable<ClassloaderNode> {
 	// TODO: Can loader => NULL?
 	public ClassloaderNode(final ClassLoader loader) {
 		this.loader = loader;
+
+		isBundle = ClassLoaderUtils.checkIsBundle(loader);
+
+		if (isBundle) {
+			try {
+				bundleReference = (BundleReference) loader;
+			} catch (Exception e) { // This should never happen in Felix
+				e.printStackTrace();
+				bundleReference = null;
+			}
+		} else
+			bundleReference = null;
 	}
+
+	// private boolean checkIsBundle(final ClassLoader loader) {
+	// if(loader instanceof BundleWiring){
+	// return true;
+	// }
+	// return false;
+	// }
 
 	public boolean addChild(final ClassloaderNode clNode) {
 		return childrenParent.add(clNode);
@@ -104,7 +133,7 @@ public class ClassloaderNode implements Comparable<ClassloaderNode> {
 	}
 
 	public int compareTo(ClassloaderNode node) {
-		return node.getName().compareTo(getName());//compare string names
+		return node.getName().compareTo(getName());// compare string names
 	}
 
 	/**

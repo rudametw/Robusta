@@ -83,6 +83,12 @@
       <version>14.0-rc2</version>
     </dependency>
 
+    <dependency>
+      <groupId>org.specs2</groupId>
+      <artifactId>classycle</artifactId>
+      <version>1.4.1</version>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -120,7 +126,7 @@
         <configuration>
           <instructions>
 <!--             <Private-Package>fr.adele.robusta</Private-Package> -->
-            <Private-Package>fr.adele.robusta.*</Private-Package>
+            <Private-Package>!fr.adele.robusta.agent, fr.adele.robusta.*</Private-Package>
             <Export-Package>!*</Export-Package>
             <Import-Package>*</Import-Package>
           </instructions>

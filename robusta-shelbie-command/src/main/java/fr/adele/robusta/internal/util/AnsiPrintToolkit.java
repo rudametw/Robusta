@@ -47,15 +47,15 @@ public class AnsiPrintToolkit {
 		this(Ansi.ansi());
 	}
 
-	public AnsiPrintToolkit(Ansi ansi) {
-		this.buffer = ansi;
+	public AnsiPrintToolkit(final Ansi ansi) {
+		buffer = ansi;
 	}
 
 	public boolean isVerbose() {
 		return verbose;
 	}
 
-	public void setVerbose(boolean verbose) {
+	public void setVerbose(final boolean verbose) {
 		this.verbose = verbose;
 	}
 
@@ -67,11 +67,11 @@ public class AnsiPrintToolkit {
 		return indenter;
 	}
 
-	public void setIndenter(String indenter) {
+	public void setIndenter(final String indenter) {
 		this.indenter = indenter;
 	}
 
-	public static boolean isEmpty(String value) {
+	public static boolean isEmpty(final String value) {
 		return ((value == null) || ("".equals(value)));
 	}
 
@@ -79,7 +79,7 @@ public class AnsiPrintToolkit {
 		indent(1);
 	}
 
-	public void indent(int level) {
+	public void indent(final int level) {
 		for (int i = 0; i < level; i++) {
 			buffer.a(indenter);
 		}
@@ -89,69 +89,69 @@ public class AnsiPrintToolkit {
 		eol(1);
 	}
 
-	public void eol(int level) {
+	public void eol(final int level) {
 		for (int i = 0; i < level; i++) {
 			buffer.a('\n');
 		}
 	}
 
-	public void red(String message) {
+	public void red(final String message) {
 		color(message, Ansi.Color.RED);
 	}
 
-	public void green(String message) {
+	public void green(final String message) {
 		color(message, Ansi.Color.GREEN);
 	}
 
-	public void blue(String message) {
+	public void blue(final String message) {
 		color(message, Ansi.Color.BLUE);
 	}
 
-	public void white(String message) {
+	public void white(final String message) {
 		color(message, Ansi.Color.WHITE);
 	}
 
-	public void black(String message) {
+	public void black(final String message) {
 		color(message, Ansi.Color.BLACK);
 	}
 
-	public void cyan(String message) {
+	public void cyan(final String message) {
 		color(message, Ansi.Color.CYAN);
 	}
 
-	public void yellow(String message) {
+	public void yellow(final String message) {
 		color(message, Ansi.Color.YELLOW);
 	}
 
-	public void magenta(String message) {
+	public void magenta(final String message) {
 		color(message, Ansi.Color.MAGENTA);
 	}
 
-	public void color(String message, Ansi.Color color) {
+	public void color(final String message, final Ansi.Color color) {
 		buffer.fg(color);
 		buffer.a(message);
 		buffer.fg(Ansi.Color.DEFAULT);
 	}
 
-	public void italic(String message) {
+	public void italic(final String message) {
 		buffer.a(Ansi.Attribute.ITALIC);
 		buffer.a(message);
 		buffer.a(Ansi.Attribute.ITALIC_OFF);
 	}
 
-	public void bold(String message) {
+	public void bold(final String message) {
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD);
 		buffer.a(message);
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD_OFF);
 	}
 
-	public void underline(String message) {
+	public void underline(final String message) {
 		buffer.a(Ansi.Attribute.UNDERLINE);
 		buffer.a(message);
 		buffer.a(Ansi.Attribute.UNDERLINE_OFF);
 	}
 
-	public void print(String message) {
+	public void print(final String message) {
 		buffer.a(message);
 	}
 
@@ -161,7 +161,7 @@ public class AnsiPrintToolkit {
 		buffer.fg(Ansi.Color.DEFAULT);
 	}
 
-	public void pad(final String message, final int repetitions){
+	public void pad(final String message, final int repetitions) {
 		for (int i = 0; i < repetitions; i++) {
 			bold("*");
 		}
@@ -170,28 +170,38 @@ public class AnsiPrintToolkit {
 	public void title(final String message) {
 		final String padding = "*****";
 		final int INDENT_SIZE = 4;
-		final int length = 2*padding.length() + message.length() + 2*INDENT_SIZE*DEFAULT_INDENTER.length();
+		final int length = (2 * padding.length()) + message.length() + (2 * INDENT_SIZE * DEFAULT_INDENTER.length());
 
 		buffer.fg(Ansi.Color.BLUE);
-
 		eol();
-		pad("*", length);eol();
-		bold(padding);indent(INDENT_SIZE);bold(message);indent(INDENT_SIZE);bold(padding);eol();
-		pad("*", length);eol();
-
+		pad("*", length);
+		eol();
+		bold(padding);
+		indent(INDENT_SIZE);
+		bold(message);
+		indent(INDENT_SIZE);
+		bold(padding);
+		eol();
+		pad("*", length);
+		eol();
 		buffer.fg(Ansi.Color.DEFAULT);
 	}
 
-	public void subtitle(String message) {
+	public void subtitle(final String message) {
 		final String padding = "***";
 		final int INDENT_SIZE = 1;
 
 		buffer.fg(Ansi.Color.BLUE);
-		bold(padding);indent(INDENT_SIZE);bold(message);indent(INDENT_SIZE);bold(padding);eol();
+		bold(padding);
+		indent(INDENT_SIZE);
+		bold(message);
+		indent(INDENT_SIZE);
+		bold(padding);
+		eol();
 		buffer.fg(Ansi.Color.DEFAULT);
 	}
 
-	public void urgent(String message) {
+	public void urgent(final String message) {
 		buffer.bgBright(Ansi.Color.RED);
 		buffer.fg(Ansi.Color.WHITE);
 		bold(message);
@@ -200,22 +210,22 @@ public class AnsiPrintToolkit {
 		eol();
 	}
 
-	public void bold(int message) {
+	public void bold(final int message) {
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD);
 		buffer.a(message);
 		buffer.a(Ansi.Attribute.INTENSITY_BOLD_OFF);
 	}
 
-	public static String padRight(String s, int n) {
+	public static String padRight(final String s, final int n) {
 		return String.format("%1$-" + n + "s", s);
 	}
 
-	public static String padLeft(String s, int n) {
+	public static String padLeft(final String s, final int n) {
 		return String.format("%1$" + n + "s", s);
 	}
 
-	public void debug(String string) {
-		yellow("DEBUG: "+ string);
+	public void debug(final String string) {
+		yellow("DEBUG: " + string);
 		eol();
 	}
 

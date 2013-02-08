@@ -3,6 +3,8 @@ package fr.adele.robusta.dependencygraph;
 import java.util.Comparator;
 import java.util.Set;
 
+import org.fusesource.jansi.Ansi;
+import org.osgi.framework.BundleReference;
 import fr.adele.robusta.internal.util.AnsiPrintToolkit;
 
 public class ClassLoaderUtils {
@@ -31,8 +33,37 @@ public class ClassLoaderUtils {
 		}
 	};
 
-	public static void printClassloaderList(final AnsiPrintToolkit toolkit, final boolean verbose, boolean numbers, final Set<ClassLoader> classloaders) {
-		// toolkit.eol();
+	public static boolean checkIsBundle(final ClassLoader loader) {
+
+		if (loader instanceof BundleReference) {
+			// toolkit.urgent("is a bundle wiring = true");
+			return true;
+		}
+		// toolkit.urgent("is a bundle wiring = false");
+		return false;
+	}
+
+	public static String getBundleName(final ClassLoader loader) {
+		if (checkIsBundle(loader)) {
+			final String bundleID = (new Long(((BundleReference) loader).getBundle().getBundleId())).toString();
+			final String bundleName = ((BundleReference) loader).getBundle().getSymbolicName();
+			final String bundleVersion = ((BundleReference) loader).getBundle().getVersion().toString();
+
+			return "#" + bundleID + " :: " + bundleName + " :: " + bundleVersion;
+		}
+		return "";
+	}
+
+	public static String getBundleID(final ClassLoader loader) {
+		if (checkIsBundle(loader)) {
+			final String bundleID = (new Long(((BundleReference) loader).getBundle().getBundleId())).toString();
+
+			return bundleID;
+		}
+		return "";
+	}
+
+	public static void printClassloaderList(final AnsiPrintToolkit toolkit, final boolean bundle, final boolean verbose, boolean numbers, final Set<ClassLoader> classloaders) {
 		toolkit.title("ClassLoader List showing Parent and Loading classloaders");
 
 		int i = 0;
@@ -49,14 +80,27 @@ public class ClassLoaderUtils {
 				printNumber(toolkit, ++i);
 			}
 
+			if (bundle) {
+				if (verbose) {
+					final String bundleFullName = getBundleName(loader);
+					printClassloaderListEntry(toolkit, verbose, bundleFullName, " bundle: ", 77);
+				}
+				if (!verbose) {
+					final String bundleID = getBundleID(loader);
+					printClassloaderListEntry(toolkit, verbose, bundleID, " bundle: ", 3);
+				}
+			}
+			printClassloaderListEntry(toolkit, verbose, loaderName, parentName, loaderLoaderName);
+
 			if (verbose) {
+				// toolkit.white(AnsiPrintToolkit.padRight("", 60));
 				if (loaderLoader == parent) {
 					toolkit.green("[SAME]");
 				} else {
 					toolkit.cyan("[DIFF]");
 				}
 			}
-			printClassloaderListEntry(toolkit, verbose, loaderName, parentName, loaderLoaderName);
+			toolkit.eol();
 		}
 		if (verbose) {
 			toolkit.subtitle("Number of classloaders " + classloaders.size());
@@ -64,7 +108,12 @@ public class ClassLoaderUtils {
 	}
 
 	public static void printNumber(AnsiPrintToolkit toolkit, int i) {
-		toolkit.white(AnsiPrintToolkit.padLeft(new Integer(i).toString(), 4));
+		String number = AnsiPrintToolkit.padLeft(new Integer(i).toString(), 4);
+		// toolkit.yellow(number);
+		//above yellow print's orange because of a bug in ansi bold()
+		toolkit.getBuffer().fg(Ansi.Color.YELLOW);
+		toolkit.bold(number);
+		toolkit.getBuffer().fg(Ansi.Color.DEFAULT);
 		toolkit.separator();
 	}
 
@@ -83,15 +132,17 @@ public class ClassLoaderUtils {
 			final String loaderLoaderName) {
 		final int padsize1 = 81;
 		final int padsize2 = 53;
+		final int padsize3 = 53;
+		// final String typeBundle = " bundle: ";
 		final String typeLoader = " loader: ";
 		final String typeParent = " parent: ";
 		final String typeLoaderLoader = " loaderLoader: ";
 
 		printClassloaderListEntry(toolkit, verbose, loaderName, typeLoader, padsize1);
 		printClassloaderListEntry(toolkit, verbose, parentName, typeParent, padsize2);
-		printClassloaderListEntry(toolkit, verbose, loaderLoaderName, typeLoaderLoader, 1);
+		printClassloaderListEntry(toolkit, verbose, loaderLoaderName, typeLoaderLoader, padsize3);
 
-		toolkit.eol();
+		// toolkit.eol();
 	}
 
 	public static ClassLoader getClassLoaderLoader(final ClassLoader loader) {
