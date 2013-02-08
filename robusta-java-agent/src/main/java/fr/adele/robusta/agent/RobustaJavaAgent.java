@@ -1,4 +1,4 @@
-package fr.adele.robusta;
+package fr.adele.robusta.agent;
 
 import java.lang.instrument.*;
 import java.util.UUID;

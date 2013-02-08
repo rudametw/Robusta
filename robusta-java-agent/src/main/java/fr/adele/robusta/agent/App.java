@@ -1,4 +1,4 @@
-package fr.adele.robusta;
+package fr.adele.robusta.agent;
 
 /**
  * Hello world!
