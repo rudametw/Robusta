@@ -30,6 +30,7 @@
             <manifestEntries>
               <Premain-Class>${agent.class}</Premain-Class>
               <Can-Redefine-Classes>true</Can-Redefine-Classes>
+              <Can-Retransform-Classes>true</Can-Retransform-Classes>
               <Main-Class>NotSuitableAsMain</Main-Class>
             </manifestEntries>
           </archive>

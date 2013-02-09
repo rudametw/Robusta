@@ -13,6 +13,8 @@ public class RobustaJavaAgent {
 
 	private static final Object INSTRUMENTATION_UUID = UUID.fromString("021df202-6bb0-11e2-8f99-5c260a385954");
 
+	public static volatile long CLASS_COUNT = 0;
+
 	public static Instrumentation getInstrumentation() {
 		Instrumentation inst = (Instrumentation) System.getProperties().get(RobustaJavaAgent.INSTRUMENTATION_UUID);
 
@@ -24,13 +26,19 @@ public class RobustaJavaAgent {
 		// return null;
 		// }
 
-		return inst;
+		System.out.println("[ROBUSTA] Total number of loaded classes intercepted: " + CLASS_COUNT);
 
+		return inst;
 	}
 
 	public static void premain(String agentArgs, Instrumentation inst) {
 		System.out.println("ROBUSTA: RobustaJavaAgent" + inst.getClass() + ": " + inst);
 		// RobustaJavaAgent.inst = inst;
+
+		inst.addTransformer(new ClassAnalyzer());
+		System.out.println("[ROBUSTA] Added ClassAnalyzer ***");
+
+		System.out.println("[ROBUSTA] Total number of loaded classes intercepted: " + CLASS_COUNT);
 
 		try {
 			System.out.println("ROBUSTA: Total number of classes: " + inst.getAllLoadedClasses().length);
