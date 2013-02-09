@@ -5,17 +5,11 @@ import java.util.UUID;
 
 public class RobustaJavaAgent {
 
-	// private static Instrumentation inst;
+    private static final Object INSTRUMENTATION_UUID = UUID.fromString("021df202-6bb0-11e2-8f99-5c260a385954");
 
-	// public static Instrumentation getInstrumentation() {
-	// return inst;
-	// }
+    public static volatile long CLASS_COUNT = 0;
 
-	private static final Object INSTRUMENTATION_UUID = UUID.fromString("021df202-6bb0-11e2-8f99-5c260a385954");
-
-	public static volatile long CLASS_COUNT = 0;
-
-	public static Instrumentation getInstrumentation() {
+    public static Instrumentation getInstrumentation() {
 		Instrumentation inst = (Instrumentation) System.getProperties().get(RobustaJavaAgent.INSTRUMENTATION_UUID);
 
 		// System.out.println("Instrumentation = " + inst);
@@ -31,24 +25,24 @@ public class RobustaJavaAgent {
 		return inst;
 	}
 
-	public static void premain(String agentArgs, Instrumentation inst) {
-		System.out.println("ROBUSTA: RobustaJavaAgent" + inst.getClass() + ": " + inst);
-		// RobustaJavaAgent.inst = inst;
+    public static void premain(String agentArgs, Instrumentation inst) {
+        System.out.println("ROBUSTA: RobustaJavaAgent" + inst.getClass() + ": " + inst);
+        // RobustaJavaAgent.inst = inst;
 
-		inst.addTransformer(new ClassAnalyzer());
-		System.out.println("[ROBUSTA] Added ClassAnalyzer ***");
+        inst.addTransformer(new ClassAnalyzer());
+        System.out.println("[ROBUSTA] Added ClassAnalyzer");
 
-		System.out.println("[ROBUSTA] Total number of loaded classes intercepted: " + CLASS_COUNT);
+        System.out.println("[ROBUSTA] Total number of loaded classes intercepted: " + CLASS_COUNT);
 
-		try {
-			System.out.println("ROBUSTA: Total number of classes: " + inst.getAllLoadedClasses().length);
-		} catch (NullPointerException e) {
-			System.err.println("ROBUSTA: inst is not valid, no classes");
-			return;
-		}
+        try {
+            System.out.println("ROBUSTA: Total number of classes: " + inst.getAllLoadedClasses().length);
+        } catch (NullPointerException e) {
+            System.err.println("ROBUSTA: inst is not valid, no classes");
+            return;
+        }
 
-		// Make insttrumentation reachable from Robusta Shelbie Command
-		System.getProperties().put(INSTRUMENTATION_UUID, inst);
+        // Make instrumentation reachable from Robusta Shelbie Command
+        System.getProperties().put(INSTRUMENTATION_UUID, inst);
 
-	}
+    }
 }
