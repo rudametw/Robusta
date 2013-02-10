@@ -30,53 +30,100 @@ import fr.adele.robusta.internal.util.AnsiPrintToolkit;
 //TODO: REMOVE PARTS THAT ARE USED FOR CLASSESS
 
 @Component
-@Command(name = "dump", scope = "robusta", description = "Command to get all loaded classes and dump them to console")
+@Command(name = "dump",
+         scope = "robusta",
+         description = "Command to get all loaded classes and dump them to console")
 @HandlerDeclaration("<sh:command xmlns:sh='org.ow2.shelbie'/>")
 public class DumpAction implements Action {
 
-    @Option(name = "-t", aliases = {"--tree", "--classloader-loading-tree"}, required = false, description = "Print classloader tree (using how they were loaded by one another)")
+    @Option(name = "-t",
+            aliases = {"--tree", "--classloader-loading-tree"},
+            required = false,
+            description = "Print classloader tree (using how they were loaded by one another)")
     private boolean treeLoading = false;
 
-    @Option(name = "-b", aliases = {"--bundle", "--print-bundle-info"}, required = false, description = "Print classloader tree (using how they were loaded by one another)")
+    @Option(name = "-b",
+            aliases = {"--bundle", "--print-bundle-info"},
+            required = false,
+            description = "Print classloader tree (using how they were loaded by one another)")
     private boolean bundle = false;
 
-    @Option(name = "-T", aliases = {"--tree", "--classloader-delegation-tree"}, required = false, description = "Print classloader tree (using how they delegate to one another)")
+    @Option(name = "-T",
+            aliases = {"--tree", "--classloader-delegation-tree"},
+            required = false,
+            description = "Print classloader tree (using how they delegate to one another)")
     private boolean treeDelegation = false;
 
-    @Option(name = "-sort", aliases = {"--sort"}, required = false, description = "Sort output")
+    @Option(name = "-sort",
+            aliases = {"--sort"},
+            required = false,
+            description = "Sort output")
     private boolean sort = false;
 
-    @Option(name = "-l", aliases = {"--list", "--classloader-list"}, required = false, description = "Print classloader table (list)")
+    @Option(name = "-l",
+            aliases = {"--list", "--classloader-list"},
+            required = false,
+            description = "Print classloader table (list)")
     private boolean list = false;
 
-    @Option(name = "-debug", aliases = {"--debug"}, required = false, description = "Include debugging output")
+    @Option(name = "-debug",
+            aliases = {"--debug"},
+            required = false,
+            description = "Include debugging output")
     private boolean debug = false;
 
-    @Option(name = "-v", aliases = {"--verbose"}, required = false, description = "Verbose output")
+    @Option(name = "-v",
+            aliases = {"--verbose"},
+            required = false,
+            description = "Verbose output")
     private boolean verbose = false;
 
-    @Option(name = "-s", aliases = {"--stats"}, required = false, description = "Print stats regarding number of classes and classloaders")
+    @Option(name = "-s",
+            aliases = {"--stats"},
+            required = false,
+            description = "Print stats regarding number of classes and classloaders")
     private boolean stats = false;
 
-    @Option(name = "-c", aliases = {"--classes"}, required = false, description = "Print all classes")
+    @Option(name = "-c",
+            aliases = {"--classes"},
+            required = false,
+            description = "Print all classes")
     private boolean classes = false;
 
-    @Option(name = "-cl", aliases = {"--include-classloader"}, required = false, description = "Print all classes")
+    @Option(name = "-cl",
+            aliases = {"--include-classloader"},
+            required = false,
+            description = "Print all classes")
     private boolean classesWithCl = false;
 
-    @Option(name = "-d", aliases = {"--duplicates"}, required = false, description = "Print duplicated classes (using class names to sort)")
+    @Option(name = "-d",
+            aliases = {"--duplicates"},
+            required = false,
+            description = "Print duplicated classes (using class names to sort)")
     private boolean duplicates = false;
 
-    @Option(name = "-D", aliases = {"--duplicates-by-cl"}, required = false, description = "Print duplicated classes (using classloader to sort)")
+    @Option(name = "-D",
+            aliases = {"--duplicates-by-cl"},
+            required = false,
+            description = "Print duplicated classes (using classloader to sort)")
     private boolean duplicatesByCL = false;
 
-    @Option(name = "-n", aliases = {"--show-numbers"}, required = false, description = "Show line numbers")
+    @Option(name = "-n",
+            aliases = {"--show-numbers"},
+            required = false,
+            description = "Show line numbers")
     private boolean numbers = false;
 
-    @Option(name = "-a", aliases = {"--all"}, required = false, description = "Dump all information")
+    @Option(name = "-a",
+            aliases = {"--all"},
+            required = false,
+            description = "Dump all information")
     private boolean all = false;
 
-    @Option(name = "-gc", aliases = {"--garbage-collection"}, required = false, description = "Instruct JVM to attempt garbage collection *before* calculating dependencies (this cannot guarantee GC --> see Java Spec)")
+    @Option(name = "-gc",
+            aliases = {"--garbage-collection"},
+            required = false,
+            description = "Attempt garbage collection *before* calculating dependencies (this cannot guarantee GC --> see Java Spec)")
     private boolean gc = false;
 
     /* Used for colorful output */
@@ -154,6 +201,7 @@ public class DumpAction implements Action {
     }
 
     private Map<ClassLoader, ClassloaderNode> calculateClassloaderLoaderGraph() {
+
         final Set<ClassLoader> classloaders = getAllClassloaders();
         final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
 
@@ -188,7 +236,7 @@ public class DumpAction implements Action {
                     // check if loaderLoader node exists
                     if (classloaderGraph.containsKey(loader.getClass().getClassLoader())) {
                         final ClassloaderNode loaderLoaderNode = classloaderGraph.get(loader.getClass()
-                                .getClassLoader());
+                                                                                            .getClassLoader());
 
                         // set loaderLoader
                         node.setLoaderLoader(loaderLoaderNode);
@@ -209,11 +257,8 @@ public class DumpAction implements Action {
                 }
             } else { // node doesn't exist yet
 
-                if (loader == null) {
-                    final ClassloaderNode node = new ClassloaderNode(loader);// has
-                                                                             // no
-                                                                             // parent
-                                                                             // node
+                if (loader == null) {// has no parent node
+                    final ClassloaderNode node = new ClassloaderNode(loader);
                     classloaderGraph.put(loader, node);
                     countAdded++;
                     if (debug) {
@@ -251,7 +296,7 @@ public class DumpAction implements Action {
             toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
             toolkit.eol();
             toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: "
-                    + classloaderGraph.values().size());
+                         + classloaderGraph.values().size());
             toolkit.eol();
         }
         return classloaderGraph;
@@ -356,7 +401,7 @@ public class DumpAction implements Action {
             toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
             toolkit.eol();
             toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: "
-                    + classloaderGraph.values().size());
+                         + classloaderGraph.values().size());
             toolkit.eol();
         }
         return classloaderGraph;
@@ -367,13 +412,13 @@ public class DumpAction implements Action {
         toolkit.title("Garbage Collection");
 
         System.gc();
+
         try {
             Thread.sleep(500);
         } catch (final InterruptedException e) {
             e.printStackTrace();
         }
         System.gc();
-
         final long time2 = System.currentTimeMillis();
         toolkit.indent(2);
         buffer.a("Garbage Collection in " + (time2 - time1) + " miliseconds");
@@ -389,7 +434,6 @@ public class DumpAction implements Action {
         }
 
         classes = new HashSet<String>(allClasses);
-
         return (allClasses.size() - classes.size());
     }
 
@@ -468,12 +512,12 @@ public class DumpAction implements Action {
                 if (!isClassLoaderKnown(allClassloaders, currentClassloaders, newFound, loaderLoader)) {
                     if (verbose) {
                         toolkit.urgent("NEW Missing ClassLoaderLoader FOUND -->" + loaderLoaderName + "value: "
-                                + loaderLoader);
+                                       + loaderLoader);
                     }
                     newFound.add(loaderLoader);
                     if (debug) {
                         toolkit.debug("Initial ClassLoader size: " + currentClassloaders.size()
-                                + " New found list of Classloaders: " + newFound.size());
+                                      + " New found list of Classloaders: " + newFound.size());
                     }
                 } else {
                     // classloaders.
@@ -492,7 +536,7 @@ public class DumpAction implements Action {
                     newFound.add(parent);
                     if (debug) {
                         toolkit.debug("Initial ClassLoader size: " + currentClassloaders.size()
-                                + " New found list of Classloaders: " + newFound.size());
+                                      + " New found list of Classloaders: " + newFound.size());
                     }
                 } else {
                     if (debug) {
@@ -511,15 +555,15 @@ public class DumpAction implements Action {
                 }
                 if (verbose) {
                     ClassLoaderUtils.printClassloaderListEntry(toolkit, verbose, loaderName, parentName,
-                            loaderLoaderName);
+                                                               loaderLoaderName);
                 }
             }
             if (debug) {
                 toolkit.urgent("Initial ClassLoader size: " + currentClassloaders.size()
-                        + " New found list of Classloaders: " + newFound.size());
+                               + " New found list of Classloaders: " + newFound.size());
                 toolkit.debug("Iterations: " + iterations);
                 toolkit.debug("Last value added to currentClassLoaders: "
-                        + currentClassloaders.get(currentClassloaders.size() - 1));
+                              + currentClassloaders.get(currentClassloaders.size() - 1));
             }
 
             for (final ClassLoader loader : newFound) {
@@ -530,8 +574,7 @@ public class DumpAction implements Action {
                     toolkit.yellow("New Found entry to be checked: ");
                 }
                 if (debug) {
-                    ClassLoaderUtils
-                            .printClassloaderListEntry(toolkit, debug, loaderName, parentName, loaderLoaderName);
+                    ClassLoaderUtils.printClassloaderListEntry(toolkit, debug, loaderName, parentName, loaderLoaderName);
                 }
             }
 
@@ -589,7 +632,8 @@ public class DumpAction implements Action {
     }
 
     private boolean isClassLoaderKnown(final Collection<ClassLoader> c1, final Collection<ClassLoader> c2,
-            final Collection<ClassLoader> c3, final ClassLoader loader) {
+                                       final Collection<ClassLoader> c3, final ClassLoader loader) {
+
         if (c1.contains(loader) || c2.contains(loader) || c3.contains(loader)) {
             return true;
         } else {
@@ -598,6 +642,7 @@ public class DumpAction implements Action {
     }
 
     private void printClassloaderTree(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy) {
+
         final Map<ClassLoader, ClassloaderNode> clGraph;
 
         switch (hierarchy) {
@@ -629,7 +674,7 @@ public class DumpAction implements Action {
     }
 
     private int printClassloaderNode(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy, final ClassloaderNode node,
-            final int indents, int current_number) {
+                                     final int indents, int current_number) {
         if (numbers) {
             ClassLoaderUtils.printNumberBrackets(toolkit, current_number);
         }
@@ -669,9 +714,7 @@ public class DumpAction implements Action {
 
     private void printDuplicateClasses() {
         // Are there any duplicates?
-        if (countDuplicates() == 0) {
-            return;
-        }
+        if (countDuplicates() == 0) { return; }
 
         // A set does not allow duplicates...
         final Map<String, Class<?>> classes = new HashMap<String, Class<?>>();
