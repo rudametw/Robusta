@@ -2,12 +2,13 @@ package fr.adele.robusta.agent;
 
 import java.lang.instrument.*;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class RobustaJavaAgent {
 
     private static final Object INSTRUMENTATION_UUID = UUID.fromString("021df202-6bb0-11e2-8f99-5c260a385954");
 
-    public static volatile long CLASS_COUNT = 0;
+    public static volatile AtomicLong CLASS_COUNT = new AtomicLong();
 
     public static Instrumentation getInstrumentation() {
 		Instrumentation inst = (Instrumentation) System.getProperties().get(RobustaJavaAgent.INSTRUMENTATION_UUID);

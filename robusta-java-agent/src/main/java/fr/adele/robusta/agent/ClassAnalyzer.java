@@ -9,34 +9,32 @@ public class ClassAnalyzer implements ClassFileTransformer {
     private String[] ignore = new String[] {"sun/", "java/", "javax/"};
 
     public byte[] transform(final ClassLoader loader, final String className, final Class<?> classBeingRedefined,
-            final ProtectionDomain protectionDomain, final byte[] classfileBuffer) throws IllegalClassFormatException {
+                            final ProtectionDomain protectionDomain, final byte[] classfileBuffer) throws IllegalClassFormatException {
 
         // System.out.println("[ROBUSTA] ANALYZER TRANSFORM");
 
-        RobustaJavaAgent.CLASS_COUNT++;
+        RobustaJavaAgent.CLASS_COUNT.getAndIncrement();
 
         printLoadedClassInfo(loader, className, classBeingRedefined);
 
         // CHECK AGAINST IGNORED CLASSES BEFORE PERFORMING MANIPULATION!!!
         for (int i = 0; i < ignore.length; i++) {
-            if (className.startsWith(ignore[i])) {
-                return null;
-            }
+            if (className.startsWith(ignore[i])) { return null; }
         }
 
         // TODO: PERFORM INSTRUMENTATION HERE:
 
         // Read class.
-            // Get super class
-            // Get implemented interfaces
-            // Get ALL referenced classes
+        // Get super class
+        // Get implemented interfaces
+        // Get ALL referenced classes
 
-        //RETURN MODIFIED CLASS
+        // RETURN MODIFIED CLASS
         return null;
     }
 
     private static void printLoadedClassInfo(final ClassLoader loader, final String className,
-            final Class<?> classBeingRedefined) {
+                                             final Class<?> classBeingRedefined) {
 
         final String loaderName;
 
@@ -55,8 +53,8 @@ public class ClassAnalyzer implements ClassFileTransformer {
 
         try {
             System.out.println("[ROBUSTA] [Load] threadID=" + padRight(Thread.currentThread().toString(), 38)
-                    + " classRedefined=" + padRight(classBeingRedefinedName, 5) + " className="
-                    + padRight(className, 85) + " classloader=" + loaderName);
+                               + " classRedefined=" + padRight(classBeingRedefinedName, 5) + " className="
+                               + padRight(className, 85) + " classloader=" + loaderName);
         } catch (final Exception e) { // Should no longer happen
             e.printStackTrace();
         }
