@@ -31,7 +31,7 @@
               <Premain-Class>${agent.class}</Premain-Class>
               <Can-Redefine-Classes>true</Can-Redefine-Classes>
               <Can-Retransform-Classes>true</Can-Retransform-Classes>
-              <Main-Class>NotSuitableAsMain</Main-Class>
+              <Main-Class>fr.adele.robusta.agent.manipulator.BytecodeAnalyzer</Main-Class>
             </manifestEntries>
           </archive>
         </configuration>
@@ -45,6 +45,11 @@
       <artifactId>junit</artifactId>
       <version>3.8.1</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>asm</groupId>
+      <artifactId>asm</artifactId>
+      <version>3.3.1</version>
     </dependency>
   </dependencies>
 </project>

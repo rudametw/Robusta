@@ -9,12 +9,14 @@ public class MethodDepAdapter extends MethodAdapter {
 	//public static Set<String> ignoredClasses;
 	//public Set<String> dependencies;
 	public ServiceDepClassAdapter classAdapter;
+	private String modifier;
 	
-	public MethodDepAdapter(MethodVisitor mv, ServiceDepClassAdapter classAdapter) {
+	public MethodDepAdapter(MethodVisitor mv, ServiceDepClassAdapter classAdapter, String modifier) {
 		super(mv);
 		
 		// I need the classAdapter reference in order to update the class dependencies. Ugly, but it works.
 		this.classAdapter = classAdapter;
+		this.modifier = modifier;
 	}
 
 	// I will jump the annotations, frames and unrelated things, we can implement it if you really need it.
@@ -32,23 +34,23 @@ public class MethodDepAdapter extends MethodAdapter {
 		if (constant.toString().startsWith("L") && constant.toString().endsWith(";"))
 			// It's a classname
 			if (!classAdapter.ignoredClasses.contains(constant.toString()))
-					classAdapter.dependencies.add(constant.toString());
+					classAdapter.dependencies.add(new Dependency(constant.toString(), modifier, Dependency.methodBodyDependency));
 		mv.visitLdcInsn(constant);
 	}
 
 	// Instructions: GETSTATIC, PUTSTATIC, GETFIELD, PUTFIELD - It cans manipulate fields from other classes as well
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {		
-		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses));
+		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		mv.visitFieldInsn(opcode, owner, name, desc);
 	}
 
 	// We can find more information about the local variables of a method
 	@Override
 	public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
-		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses));
+		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		if (signature != null)
-			classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(signature, classAdapter.ignoredClasses));
+			classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(signature, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		mv.visitLocalVariable(name, desc, signature, start, end, index);
 	}
 
@@ -56,9 +58,9 @@ public class MethodDepAdapter extends MethodAdapter {
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
 		if (!classAdapter.ignoredClasses.contains("L" + owner + ";")) {
-			classAdapter.dependencies.add("L"+owner+";");
+			classAdapter.dependencies.add(new Dependency("L"+owner+";", modifier, Dependency.methodBodyDependency));
 		}
-		classAdapter.dependencies.addAll(Utils.getClassNamesFromMethodDesc(desc, classAdapter.ignoredClasses));
+		classAdapter.dependencies.addAll(Utils.getClassNamesFromMethodDesc(desc, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		mv.visitMethodInsn(opcode, owner, name, desc);
 	}
 
@@ -67,7 +69,7 @@ public class MethodDepAdapter extends MethodAdapter {
 	@Override
 	public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
 		if (!classAdapter.ignoredClasses.contains("L" + type + ";") && (type != null)) {
-			classAdapter.dependencies.add("L"+type+";");
+			classAdapter.dependencies.add(new Dependency("L"+type+";", modifier, Dependency.methodBodyDependency));
 		}
 		mv.visitTryCatchBlock(start, end, handler, type);
 	}
@@ -78,9 +80,9 @@ public class MethodDepAdapter extends MethodAdapter {
 	public void visitTypeInsn(int opcode, String type) {
 		if (!type.startsWith("[")) { 
 			if (!classAdapter.ignoredClasses.contains("L"+ type + ";"))
-				classAdapter.dependencies.add("L"+type+";");
+				classAdapter.dependencies.add(new Dependency("L"+type+";", modifier, Dependency.methodBodyDependency));
 		} else {
-			classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(type, classAdapter.ignoredClasses));
+			classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(type, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		}		
 					
 		mv.visitTypeInsn(opcode, type);
@@ -90,7 +92,7 @@ public class MethodDepAdapter extends MethodAdapter {
 	// Used to define arrays whose type is not primitive
 	@Override
 	public void visitMultiANewArrayInsn(String desc, int dimensions){
-		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses));
+		classAdapter.dependencies.addAll(Utils.getClassNamesFromFieldDesc(desc, classAdapter.ignoredClasses, modifier, Dependency.methodBodyDependency));
 		mv.visitMultiANewArrayInsn(desc, dimensions);
 	}
 	

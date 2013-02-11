@@ -1,7 +1,5 @@
 package fr.adele.robusta.agent.manipulator;
 
-//TODO: DELETE
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;

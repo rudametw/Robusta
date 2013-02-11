@@ -12,39 +12,36 @@ import org.objectweb.asm.ClassWriter;
 
 public class BytecodeAnalyzer {
 
-    public static void main(final String[] args) {
+    public static void main(String[] args) {
         // Args = Array of class files
 
-        byte[] newByteCode;
         // Opens the class-file
-        for (final String classFile : args) {
-            final File file = new File(classFile);
+        for (String classFile : args) {
+            File file = new File(classFile);
+            byte[] newByteCode;
             try {
                 FileInputStream fin = null;
                 fin = new FileInputStream(file);
-                final byte[] byteCode = new byte[(int) file.length()];
+                byte[] byteCode = new byte[(int) file.length()];
                 // byte[] buf = new byte[(int) jarentry.getSize()];
                 int offset = 0, numRead = 0;
-                while ((offset < byteCode.length)
-                       && ((numRead = fin.read(byteCode, offset, byteCode.length - offset)) >= 0)) {
+                while (offset < byteCode.length
+                       && (numRead = fin.read(byteCode, offset, byteCode.length - offset)) >= 0) {
                     offset += numRead;
                 }
 
                 // Up to you to create your set of ignored classes properly :P
-                final Set<String> ignoredClasses = new HashSet<String>();
-                ignoredClasses.add("Ljava/lang/Object;");
-                ignoredClasses.add(BytecodeAnalyzer.class.getCanonicalName());
+                Set<String> ignoredClasses = new HashSet<String>();
+                // ignoredClasses.add("Ljava/lang/Object;");
+                // ignoredClasses.add(BytecodeAnalyzer.class.getCanonicalName());
                 // Usually here byteCode contains the bytecode of the class
-                final ClassReader cr = new ClassReader(byteCode);
-                final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                final ClassAdapter ca = new ServiceDepClassAdapter(cw, ignoredClasses);
+                ClassReader cr = new ClassReader(byteCode);
+                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                ClassAdapter ca = new ServiceDepClassAdapter(cw, ignoredClasses);
                 cr.accept(ca, 0);
 
-                // Modified bytecode (with the fields)
-                // @SuppressWarnings("unused")
                 newByteCode = cw.toByteArray();
 
-                // Closes the
                 fin.close();
 
                 System.out.println("NewByteCode: " + newByteCode);
@@ -70,4 +67,5 @@ public class BytecodeAnalyzer {
         final ClassAdapter ca = new RobustaFieldVisitor(cw);
         cr.accept(ca, 0);
     }
+
 }

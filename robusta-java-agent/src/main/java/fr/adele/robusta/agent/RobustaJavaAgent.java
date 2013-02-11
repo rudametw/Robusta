@@ -9,6 +9,9 @@ public class RobustaJavaAgent {
     private static final Object INSTRUMENTATION_UUID = UUID.fromString("021df202-6bb0-11e2-8f99-5c260a385954");
 
     public static volatile AtomicLong CLASS_COUNT = new AtomicLong();
+    public static volatile AtomicLong MODIFIED_CLASS_COUNT = new AtomicLong();
+    public static volatile AtomicLong NON_MODIFIED_CLASS_COUNT = new AtomicLong();
+    public static volatile AtomicLong REDEFINED_CLASS_COUNT = new AtomicLong();
 
     public static Instrumentation getInstrumentation() {
 		Instrumentation inst = (Instrumentation) System.getProperties().get(RobustaJavaAgent.INSTRUMENTATION_UUID);

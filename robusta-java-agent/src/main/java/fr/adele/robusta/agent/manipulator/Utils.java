@@ -3,11 +3,13 @@ package fr.adele.robusta.agent.manipulator;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.objectweb.asm.Opcodes;
+
 public class Utils {
 	
-	public static void print(Set<String> dependencies){
-		for (String s : dependencies) {
-			System.out.println(Utils.getFriendlyName(s));
+	public static void print(Set<Dependency> dependencies){
+		for (Dependency d : dependencies) {
+			System.out.println(Utils.getFriendlyName(d.getClassName()) + " - " + d.getModifier() + " " + d.getOrigin());
 		}
 	}
 	
@@ -29,8 +31,36 @@ public class Utils {
 			return false;
 	}
 	
-	public static Set<String> getClassNamesFromFieldDesc(String desc, Set<String> ignoredClasses){
-		Set<String> names = new HashSet<String>();
+	public static String getModifier(int access) {
+		String modifier = "";
+		boolean none = true;
+		if ((access & Opcodes.ACC_PUBLIC) > 0) {
+			modifier += Dependency.publicModifier;
+			none = false;
+		}
+		if ((access & Opcodes.ACC_PRIVATE) > 0) {
+			modifier += Dependency.privateModifier;
+			none = false;
+		}
+		if ((access & Opcodes.ACC_PROTECTED) > 0) {
+			modifier += Dependency.protectedModifier;
+			none = false;
+		}
+		/* if ((access & Opcodes.ACC_STATIC) > 0) {
+			modifier += Dependency.staticModifier;
+			none = false;
+		}
+		if ((access & Opcodes.ACC_FINAL) > 0) {
+			modifier += Dependency.finalModifier;
+			none = false;
+		} */
+		if (none)
+			modifier += Dependency.noModifier;
+		return modifier;
+	}
+	
+	public static Set<Dependency> getClassNamesFromFieldDesc(String desc, Set<String> ignoredClasses, String modifier, String depType){
+		Set<Dependency> names = new HashSet<Dependency>();
 		
 		String[] descParts = desc.split("<");
 		for (String descPart : descParts) {
@@ -58,7 +88,7 @@ public class Utils {
 				}
 				className += ';';
 				if (!ignoredClasses.contains(className)) {
-					names.add(className);
+					names.add(new Dependency(className, modifier, depType));
 				}					
 			}
 		}
@@ -66,9 +96,10 @@ public class Utils {
 		return names;
 	}
 	
-	public static Set<String> getClassNamesFromMethodDesc(String desc, Set<String> ignoredClasses){
-		Set<String> names = new HashSet<String>();
+	public static Set<Dependency> getClassNamesFromMethodDesc(String desc, Set<String> ignoredClasses, String modifier, String depType){
+		Set<Dependency> names = new HashSet<Dependency>();
 
+		int returnIndex = desc.indexOf(")");
 		// A method description is like this: (<inputtypes>)<outputtypes>
 		String[] parameters = desc.substring(1).split("\\)");
 		for (String parameter : parameters) {
@@ -100,7 +131,7 @@ public class Utils {
 					}
 					className += ';';
 					if (!ignoredClasses.contains(className)) {
-						names.add(className);
+						names.add(new Dependency(className, modifier, depType));
 					}					
 				}
 			}	
