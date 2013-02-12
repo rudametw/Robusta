@@ -46,6 +46,7 @@ public class BytecodeAnalyzer {
 
                 System.out.println("NewByteCode: " + newByteCode);
                 printClassFields(newByteCode);
+                printClassAnnotations(newByteCode);
 
             } catch (final IOException e) {
                 e.printStackTrace();
@@ -56,7 +57,7 @@ public class BytecodeAnalyzer {
     }
 
     public static void printClassFields(final byte[] newByteCode) {
-        System.out.println("List of Fields");
+        System.out.println("*** List of Fields ***");
         if (newByteCode == null) {
             System.out.println("Bytecode is NULL");
             return;
@@ -67,5 +68,19 @@ public class BytecodeAnalyzer {
         final ClassAdapter ca = new RobustaFieldVisitor(cw);
         cr.accept(ca, 0);
     }
+
+    public static void printClassAnnotations(final byte[] newByteCode) {
+        System.out.println("*** List of Annotations ***");
+        if (newByteCode == null) {
+            System.out.println("Bytecode is NULL");
+            return;
+        }
+
+        final ClassReader cr = new ClassReader(newByteCode);
+        final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        final ClassAdapter ca = new RobustaAnnotationVisitorPrinter(cw);
+        cr.accept(ca, 0);
+    }
+
 
 }

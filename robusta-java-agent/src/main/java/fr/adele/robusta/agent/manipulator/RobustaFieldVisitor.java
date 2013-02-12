@@ -23,6 +23,9 @@ public class RobustaFieldVisitor extends ClassAdapter {
     // this.ignoredClasses = ignoredClasses;
     // }
 
+    /**
+     * Method used to print all fields of a class.
+     */
     @Override
     public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
         System.out.println("ACCESS:" + access + " NAME:" + name + " DESC:" + desc + " SIGNATURE:" + signature
@@ -34,7 +37,7 @@ public class RobustaFieldVisitor extends ClassAdapter {
         // dependencies.addAll(Utils.getClassNamesFromFieldDesc(signature,
         // ignoredClasses));
         //
-        // return cv.visitField(access, name, desc, signature, value);
-        return null;
+        return cv.visitField(access, name, desc, signature, value);
+        //return null;
     }
 }

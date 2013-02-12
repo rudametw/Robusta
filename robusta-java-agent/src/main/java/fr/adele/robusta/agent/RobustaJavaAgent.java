@@ -10,7 +10,7 @@ public class RobustaJavaAgent {
 
     public static volatile AtomicLong CLASS_COUNT = new AtomicLong();
     public static volatile AtomicLong MODIFIED_CLASS_COUNT = new AtomicLong();
-    public static volatile AtomicLong NON_MODIFIED_CLASS_COUNT = new AtomicLong();
+    public static volatile AtomicLong IGNORED_CLASS_COUNT = new AtomicLong();
     public static volatile AtomicLong REDEFINED_CLASS_COUNT = new AtomicLong();
 
     public static Instrumentation getInstrumentation() {
