@@ -126,9 +126,11 @@
         <configuration>
           <instructions>
 <!--             <Private-Package>fr.adele.robusta</Private-Package> -->
-            <Private-Package>!fr.adele.robusta.agent, fr.adele.robusta.*</Private-Package>
+<!--             <Private-Package>!fr.adele.robusta.agent, fr.adele.robusta.*</Private-Package> -->
+<!--             <Export-Package>!fr.adele.robusta.agent, !fr.adele.robusta.annotations, *</Export-Package> -->
             <Export-Package>!*</Export-Package>
-            <Import-Package>*</Import-Package>
+<!--             <Import-Package>org.apache.felix.service.command, fr.adele.robusta.annotations, *</Import-Package> -->
+            <Import-Package>!fr.adele.robusta.annotations,!fr.adele.robusta.agent, *</Import-Package>
           </instructions>
         </configuration>
       </plugin>
