@@ -1,4 +1,4 @@
-package fr.adele.robusta;
+package fr.adele.robusta.commands;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -18,53 +18,31 @@ import org.apache.felix.ipojo.annotations.HandlerDeclaration;
 import org.apache.felix.service.command.CommandSession;
 import org.fusesource.jansi.Ansi;
 
+import scala.Int;
+
 import com.google.common.base.Throwables;
 
 import fr.adele.robusta.agent.RobustaJavaAgent;
+import fr.adele.robusta.annotations.ClassDependency;
+import fr.adele.robusta.annotations.Robusta;
 import fr.adele.robusta.dependencygraph.ClassLoaderUtils;
-import fr.adele.robusta.dependencygraph.ClassLoaderUtils.LOADER_HIERARCHY;
+import fr.adele.robusta.dependencygraph.ClassTree;
 import fr.adele.robusta.dependencygraph.ClassUtils;
-import fr.adele.robusta.dependencygraph.ClassloaderNode;
 import fr.adele.robusta.internal.util.AnsiPrintToolkit;
-
-//TODO: REMOVE PARTS THAT ARE USED FOR CLASSESS
+import java.lang.annotation.Annotation;
 
 @Component
-@Command(name = "dump",
+@Command(name = "class",
          scope = "robusta",
          description = "Command to get all loaded classes and dump them to console")
 @HandlerDeclaration("<sh:command xmlns:sh='org.ow2.shelbie'/>")
-public class DumpAction implements Action {
-
-    @Option(name = "-t",
-            aliases = {"--tree", "--classloader-loading-tree"},
-            required = false,
-            description = "Print classloader tree (using how they were loaded by one another)")
-    private boolean treeLoading = false;
-
-    @Option(name = "-b",
-            aliases = {"--bundle", "--print-bundle-info"},
-            required = false,
-            description = "Print classloader tree (using how they were loaded by one another)")
-    private boolean bundle = false;
-
-    @Option(name = "-T",
-            aliases = {"--tree", "--classloader-delegation-tree"},
-            required = false,
-            description = "Print classloader tree (using how they delegate to one another)")
-    private boolean treeDelegation = false;
+public class ClassAction implements Action {
 
     @Option(name = "-sort",
             aliases = {"--sort"},
             required = false,
             description = "Sort output")
     private boolean sort = false;
-
-    @Option(name = "-l",
-            aliases = {"--list", "--classloader-list"},
-            required = false,
-            description = "Print classloader table (list)")
-    private boolean list = false;
 
     @Option(name = "-debug",
             aliases = {"--debug"},
@@ -114,16 +92,34 @@ public class DumpAction implements Action {
             description = "Show line numbers")
     private boolean numbers = false;
 
-    @Option(name = "-a",
+    @Option(name = "-all",
             aliases = {"--all"},
             required = false,
             description = "Dump all information")
     private boolean all = false;
 
+    @Option(name = "-a",
+            aliases = {"--annotation"},
+            required = false,
+            description = "Dump all classes that have robusta annotations")
+    private boolean annotations = false;
+
+    @Option(name = "-A",
+            aliases = {"--all-annotation"},
+            required = false,
+            description = "Dump all annotations for all classes")
+    private boolean allAnnotations = false;
+
+    @Option(name = "-t",
+            aliases = {"--tree"},
+            required = false,
+            description = "Dump all information")
+    private boolean tree = false;
+
     @Option(name = "-gc",
             aliases = {"--garbage-collection"},
             required = false,
-            description = "Attempt garbage collection *before* calculating dependencies (this cannot guarantee GC --> see Java Spec)")
+            description = "Instruct JVM to attempt garbage collection *before* calculating dependencies (this cannot guarantee GC --> see Java Spec)")
     private boolean gc = false;
 
     /* Used for colorful output */
@@ -148,15 +144,18 @@ public class DumpAction implements Action {
             if (all) {
                 stats = true;
                 classes = true;
-                treeLoading = true;
-                treeDelegation = true;
-                list = true;
                 numbers = true;
                 classesWithCl = true;
             }
 
+            if (annotations) {
+                printClassesWithAnnotations();
+            }
+            if (allAnnotations) {
+                printClassesAnnotations();
+            }
             // If nothing is set, we should print stats
-            if (!classes && !treeDelegation && !treeLoading && !stats && !duplicates && !duplicatesByCL && !gc && !list) {
+            if (!classes && !stats && !duplicates && !duplicatesByCL && !gc && !tree && !annotations && !allAnnotations) {
                 stats = true;
             }
 
@@ -164,21 +163,13 @@ public class DumpAction implements Action {
                 dumpAllClasses();
             }
 
+            if (tree) {
+                printTreeNodes();
+            }
             if (duplicates || duplicatesByCL) {
                 printDuplicateClasses();
             }
 
-            if (list) {
-                printClassloaderList();
-            }
-            if (treeDelegation) {
-                printClassloaderTree(LOADER_HIERARCHY.PARENT);
-            }
-            if (treeLoading) {
-                // printClassloaderTreeLoading();
-                printClassloaderTree(LOADER_HIERARCHY.LOADER);
-                // throw new UnsupportedOperationException();
-            }
             if (stats) {
                 printStats();
             }
@@ -200,211 +191,24 @@ public class DumpAction implements Action {
         return null;
     }
 
-    private Map<ClassLoader, ClassloaderNode> calculateClassloaderLoaderGraph() {
-
-        final Set<ClassLoader> classloaders = getAllClassloaders();
-        final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
-
-        if (verbose) toolkit.title("Calculate Classloader Loading Tree");
-
-        int countLoop = 0, countAdded = 0;
-
-        for (final ClassLoader loader : classloaders) {
-
-            if (debug) {
-                toolkit.green("loader:" + loader);
-                toolkit.eol();
-            }
-            countLoop++;
-
-            // check if node already exists
-            if (classloaderGraph.containsKey(loader)) {
-                final ClassloaderNode node = classloaderGraph.get(loader);
-
-                if (loader == null) { // we don't need to do anything, bootstrap
-                                      // node is already created and doesn't
-                                      // have a parent or a loader
-                    if (debug) {
-                        toolkit.subtitle("Found BOOTSTRAP (NULL) classloader!");
-                    }
-                    continue;
-                }
-
-                // check if parent is set
-                if (node.getParent() == null) {
-
-                    // check if loaderLoader node exists
-                    if (classloaderGraph.containsKey(loader.getClass().getClassLoader())) {
-                        final ClassloaderNode loaderLoaderNode = classloaderGraph.get(loader.getClass()
-                                                                                            .getClassLoader());
-
-                        // set loaderLoader
-                        node.setLoaderLoader(loaderLoaderNode);
-
-                    } else {
-                        // create parent and set
-                        final ClassloaderNode loaderLoaderNode = new ClassloaderNode(loader.getClass().getClassLoader());
-                        node.setLoaderLoader(loaderLoaderNode);// automatically
-                                                               // adds child
-                        // classloaderGraph.put(loader, node);
-                        classloaderGraph.put(loaderLoaderNode.getClassloader(), loaderLoaderNode);
-                        countAdded++;
-                    }
-                } else { // not necessary because node and parent already exist
-                         // (not sure if this can even happen!)
-                    toolkit.urgent("ERROR: Node and loaderLoader already set!");
-                    toolkit.eol();
-                }
-            } else { // node doesn't exist yet
-
-                if (loader == null) {// has no parent node
-                    final ClassloaderNode node = new ClassloaderNode(loader);
-                    classloaderGraph.put(loader, node);
-                    countAdded++;
-                    if (debug) {
-                        toolkit.debug("Added bootstrap to map!");
-                    }
-                    continue;
-                }
-
-                // check to see if loaderLoader exists, if not create
-                // loaderLoader node first!
-                if (classloaderGraph.containsKey(loader.getClass().getClassLoader())) {
-                    final ClassloaderNode loaderLoaderNode = classloaderGraph.get(loader.getClass().getClassLoader());
-                    final ClassloaderNode node = new ClassloaderNode(loader);
-                    node.setLoaderLoader(loaderLoaderNode);
-                    classloaderGraph.put(loader, node);
-                    countAdded++;
-                } else {
-                    // empty parent for him, we'll get him later in the loop!
-                    final ClassloaderNode loaderLoaderNode = new ClassloaderNode(loader.getClass().getClassLoader());
-                    final ClassloaderNode node = new ClassloaderNode(loader);
-                    node.setLoaderLoader(loaderLoaderNode);
-                    classloaderGraph.put(loader, node);
-                    classloaderGraph.put(loaderLoaderNode.getClassloader(), loaderLoaderNode);
-                    countAdded++;
-                    countAdded++;
-                }
-            }
-        }
-
-        if (verbose) {
-            toolkit.cyan("CountLoop: " + countLoop + " CountAdded: " + countAdded);
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders found in getAllClassloaders: " + classloaders.size());
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: "
-                         + classloaderGraph.values().size());
-            toolkit.eol();
-        }
-        return classloaderGraph;
+    private void printTreeNodes() {
+        final ClassTree tree1 = new ClassTree(fr.adele.robusta.dependencygraph.ClassloaderNode.class);
+        final ClassTree tree2 = new ClassTree(ClassTree.class);
+        printTreeNode(tree1);
+        printTreeNode(tree2);
+        printTreeNode(new ClassTree(HashMap.class));
+        printTreeNode(new ClassTree(Class.class));
     }
 
-    private Map<ClassLoader, ClassloaderNode> calculateClassloaderParentGraph() {
-        final Set<ClassLoader> classloaders = getAllClassloaders();
-        final Map<ClassLoader, ClassloaderNode> classloaderGraph = new HashMap<ClassLoader, ClassloaderNode>();
+    private void printTreeNode(final ClassTree tree) {
+        toolkit.subtitle("Printing tree");
+        final List<Class<?>> children = tree.getOrderedList();
 
-        if (verbose) toolkit.title("Calculate Classloader Delegation Tree");
-
-        int countLoop = 0, countAdded = 0;
-
-        for (final ClassLoader loader : classloaders) {
-
-            if (debug) {
-                toolkit.green("loader:" + loader);
-                toolkit.eol();
-            }
-            countLoop++;
-
-            // check if node already exists
-            if (classloaderGraph.containsKey(loader)) {
-                final ClassloaderNode node = classloaderGraph.get(loader);
-
-                if (loader == null) { // we don't need to do anything, bootstrap
-                                      // node is already created and doesn't
-                                      // have a parent
-                    if (debug) {
-                        toolkit.subtitle("Found BOOTSTRAP (NULL) classloader!");
-                    }
-                    continue;
-                }
-
-                // check if parent is set
-                if (node.getParent() == null) {
-
-                    // check if parent node exists
-                    if (classloaderGraph.containsKey(loader.getParent())) {
-                        final ClassloaderNode parentNode = classloaderGraph.get(loader.getParent());
-
-                        // set parent
-                        node.setParent(parentNode);
-
-                    } else {
-                        // create parent and set
-                        final ClassloaderNode parentNode = new ClassloaderNode(loader.getParent());
-                        node.setParent(parentNode);
-                        // classloaderGraph.put(loader, node);
-                        classloaderGraph.put(parentNode.getClassloader(), parentNode);
-                        countAdded++;
-                    }
-                } else { // not necessary because node and parent already exist
-                         // (not sure if this can even happen!)
-                    toolkit.urgent("ERROR: Node and parent already set!");
-                    toolkit.eol();
-                }
-            } else { // node doesn't exist yet
-
-                if (loader == null) {
-                    final ClassloaderNode node = new ClassloaderNode(loader);// has
-                                                                             // no
-                                                                             // parent
-                                                                             // node
-                    classloaderGraph.put(loader, node);
-                    countAdded++;
-                    if (debug) {
-                        toolkit.debug("Added bootstrap to map!");
-                    }
-                    continue;
-                }
-
-                // check to see if parent exists, if not create parent node
-                // first!
-                if (classloaderGraph.containsKey(loader.getParent())) {
-                    // if (classloaderGraph.get(loader.getParent()) == null){
-                    //
-                    // }
-                    final ClassloaderNode parentNode = classloaderGraph.get(loader.getParent());
-                    final ClassloaderNode node = new ClassloaderNode(loader);
-                    node.setParent(parentNode);
-                    classloaderGraph.put(loader, node);
-                    countAdded++;
-                } else {
-                    // empty parent for him, we'll get him later in the loop!
-                    final ClassloaderNode parentNode = new ClassloaderNode(loader.getParent());
-                    final ClassloaderNode node = new ClassloaderNode(loader);
-                    node.setParent(parentNode);
-                    classloaderGraph.put(loader, node);
-                    classloaderGraph.put(parentNode.getClassloader(), parentNode);
-                    countAdded++;
-                    countAdded++;
-                }
-            }
-        }
-
-        if (verbose) {
-            toolkit.cyan("CountLoop: " + countLoop + " CountAdded: " + countAdded);
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders found in getAllClassloaders: " + classloaders.size());
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders maintained in calculateClassloaderGraph: " + classloaderGraph.size());
-            toolkit.eol();
-            toolkit.cyan("Number of classloaders maintained in set calculateClassloaderGraph: "
-                         + classloaderGraph.values().size());
+        for (final Object o : children) {
+            final Class<?> child = (Class<?>) o;
+            toolkit.white(child.getName());
             toolkit.eol();
         }
-        return classloaderGraph;
     }
 
     private void collectGarbage() {
@@ -412,13 +216,13 @@ public class DumpAction implements Action {
         toolkit.title("Garbage Collection");
 
         System.gc();
-
         try {
             Thread.sleep(500);
         } catch (final InterruptedException e) {
             e.printStackTrace();
         }
         System.gc();
+
         final long time2 = System.currentTimeMillis();
         toolkit.indent(2);
         buffer.a("Garbage Collection in " + (time2 - time1) + " miliseconds");
@@ -434,6 +238,7 @@ public class DumpAction implements Action {
         }
 
         classes = new HashSet<String>(allClasses);
+
         return (allClasses.size() - classes.size());
     }
 
@@ -451,8 +256,6 @@ public class DumpAction implements Action {
                     // ":");
                     buffer.a(clazz.getClassLoader().toString());
                     toolkit.separator();
-                    toolkit.green(clazz.getClassLoader().getClass().getName());
-                    toolkit.separator();
                 } else {
                     buffer.a("bootstrap");
                     // toolkit.eol();
@@ -460,6 +263,156 @@ public class DumpAction implements Action {
                 }
             }
             buffer.a(clazz.getName());
+            toolkit.eol();
+        }
+    }
+
+    private void printClassesAnnotations() {
+        int annotated = 0;
+        int non_annotated = 0;
+
+        toolkit.title("Printing All Annotations for each Class");
+
+        for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+            // final Robusta annotation = null;
+            Annotation[] annotations = null;
+            try {
+
+                toolkit.white("clazz=");
+                toolkit.bold(clazz.toString() + "  ");
+
+                annotations = clazz.getAnnotations();
+
+                if (annotations.length > 0) {
+                    toolkit.white("annotated=");
+                    toolkit.bold("yes  ");
+                    toolkit.white(" annotations_length=");
+                    toolkit.bold(new Integer(annotations.length).toString());
+                    toolkit.white("  " + clazz.getName());
+                    toolkit.white(" canonical:" + clazz.getCanonicalName());
+                    toolkit.eol();
+                    annotated++;
+
+                    toolkit.subtitle("Stats");
+                    toolkit.printStatEntry("Total number of   annotated classes: ", annotated);
+                    toolkit.printStatEntry("Total number of unannotated classes: ", non_annotated);
+                    toolkit.white("Current thread: " + Thread.currentThread().getName());
+                    toolkit.eol();
+                } else {
+                    non_annotated++;
+                    toolkit.white("annotated=");
+                    toolkit.white("no  ");
+                    toolkit.white(clazz.getName());
+                    toolkit.eol();
+                }
+
+                for (final Annotation an : annotations) {
+                    toolkit.cyan(an.toString());
+                    toolkit.eol();
+                }
+                // toolkit.subtitle("FLUSHED");
+                // toolkit.eol();
+                // final PrintStream stream = System.out;
+                // stream.println(toolkit.getBuffer().toString());
+
+            } catch (java.lang.reflect.GenericSignatureFormatError t) {
+                toolkit.urgent("Exceeeeptiooooonnn");
+                toolkit.urgent(Throwables.getStackTraceAsString(t));
+            }
+        }
+
+        toolkit.subtitle("Stats");
+        toolkit.printStatEntry("Total number of   annotated classes: ", annotated);
+        toolkit.printStatEntry("Total number of unannotated classes: ", non_annotated);
+        toolkit.printStatEntry("Total number of classes counted: ", (non_annotated + annotated));
+    }
+
+    private void printClassesWithAnnotations() {
+        int annotated = 0;
+        int non_annotated = 0;
+        int total = 0;
+
+        toolkit.title("Printing Classes with Robusta Annotations");
+
+        Class<?>[] classes = RobustaJavaAgent.getInstrumentation().getAllLoadedClasses();
+
+        toolkit.subtitle("Classes length: " + classes.length);
+
+        for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+            Robusta annotation = null;
+
+            if (verbose) {
+                toolkit.green("Annotated:" + annotated + "  Non annotated: " + non_annotated + "  Total:"
+                              + (annotated + non_annotated));
+                toolkit.eol();
+            }
+
+            try {
+                annotation = clazz.getAnnotation(Robusta.class);
+            } catch (final Throwable e) {
+                // TODO Auto-generated catch block
+                toolkit.white("EXCEPTION CAUGHT IN PRINT ANNOTATIONS: ");
+                toolkit.white("Class: " + clazz.getName() + "    ");
+                toolkit.magenta(Throwables.getStackTraceAsString(e));
+                toolkit.eol();
+            }
+
+            if (annotation == null) {
+                non_annotated++;
+                toolkit.white("annotated=no   " + clazz.getName() + "");
+                toolkit.eol();
+                continue;
+            }
+            annotated++;
+            toolkit.white("annotated=");
+            toolkit.bold("yes  ");
+            toolkit.white(clazz.getName());
+            toolkit.eol();
+
+            // toolkit.getBuffer();
+            //
+            // toolkit.subtitle("FLUSHED");
+            // final PrintStream stream = System.out;
+            // stream.println(toolkit.getBuffer().toString());
+
+            if (verbose) {
+                try {
+                    printAnnotation(annotation);
+                } catch (final Exception e) {
+                    toolkit.subtitle("EXCEPTION CAUGHT IN PRINT ANNOTATIONS: ");
+                    toolkit.green(Throwables.getStackTraceAsString(e));
+                    toolkit.eol();
+                }
+            }
+            // count both cases
+            // done
+            toolkit.subtitle("Stats");
+            toolkit.printStatEntry("Total number of   annotated classes: ", annotated);
+            toolkit.printStatEntry("Total number of unannotated classes: ", non_annotated);
+        }
+
+    }
+
+    private void printAnnotation(final Robusta annotation) {
+        // TODO Auto-generated method stub
+        toolkit.indent(2);
+        toolkit.white("@ROBUSTA: ");
+        toolkit.eol();
+
+        final ClassDependency[] dependencies = annotation.value();
+        final int small_padding = 10, large_padding = 50;
+
+        for (final ClassDependency dependency : dependencies) {
+            toolkit.indent(4);
+            toolkit.white("@CLASSDEPENDENCY: ");
+            toolkit.white(" classname=");
+            toolkit.bold(AnsiPrintToolkit.padRight(dependency.className(), large_padding));
+            toolkit.white(" modifier=");
+            toolkit.bold(AnsiPrintToolkit.padRight(dependency.modifier(), small_padding));
+            toolkit.white(" origin=");
+            toolkit.bold(AnsiPrintToolkit.padRight(dependency.origin(), small_padding));
+            toolkit.white(" clazz=");
+            toolkit.bold(AnsiPrintToolkit.padRight(dependency.clazz().getName(), large_padding));
             toolkit.eol();
         }
     }
@@ -633,83 +586,11 @@ public class DumpAction implements Action {
 
     private boolean isClassLoaderKnown(final Collection<ClassLoader> c1, final Collection<ClassLoader> c2,
                                        final Collection<ClassLoader> c3, final ClassLoader loader) {
-
         if (c1.contains(loader) || c2.contains(loader) || c3.contains(loader)) {
             return true;
         } else {
             return false;
         }
-    }
-
-    private void printClassloaderTree(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy) {
-
-        final Map<ClassLoader, ClassloaderNode> clGraph;
-
-        switch (hierarchy) {
-            case PARENT:
-                toolkit.title("Printing classloader delegation tree");
-                clGraph = calculateClassloaderParentGraph();
-                break;
-            case LOADER:
-                toolkit.title("Printing classloader loader tree (how the classloaders were loaded)");
-                clGraph = calculateClassloaderLoaderGraph();
-                break;
-            default:
-                clGraph = null;// fail fast
-        }
-
-        // toplevel classloader is always null
-        ClassloaderNode toplevelNode = clGraph.get(null);
-
-        if (debug) toolkit.debug("Printing using hierarchy: " + hierarchy);
-
-        int total = printClassloaderNode(hierarchy, toplevelNode, 0, 1);
-        if (debug) toolkit.subtitle("Total number of printed classloaders: " + total);
-
-    }
-
-    private void printClassloaderList() {
-        final Set<ClassLoader> classloaders = getAllClassloaders();
-        ClassLoaderUtils.printClassloaderList(toolkit, bundle, verbose, numbers, classloaders);
-    }
-
-    private int printClassloaderNode(final ClassLoaderUtils.LOADER_HIERARCHY hierarchy, final ClassloaderNode node,
-                                     final int indents, int current_number) {
-        if (numbers) {
-            ClassLoaderUtils.printNumberBrackets(toolkit, current_number);
-        }
-        current_number++;
-
-        toolkit.indentWithMarker(indents, 3);
-        // buffer.a(node.getName());
-        toolkit.bold(node.getName());
-        toolkit.eol();
-
-        List<ClassloaderNode> children;
-
-        switch (hierarchy) {
-            case PARENT:
-                children = node.getChildrenParent();
-                break;
-            case LOADER:
-                children = node.getChildrenLoader();
-                break;
-            default:
-                children = null;// purposefully causes NPE in for-each
-                break;
-        }
-
-        if (sort) {
-            Collections.sort(children);
-        }
-        // for (final ClassloaderNode child : node.getChildrenParent()) {
-        // current_number = printClassloaderDelegateNode(hierarchy, child,
-        // (indents) + 3, current_number);
-        // }
-        for (final ClassloaderNode child : children) {
-            current_number = printClassloaderNode(hierarchy, child, indents + 1, current_number);
-        }
-        return current_number;
     }
 
     private void printDuplicateClasses() {
@@ -770,8 +651,6 @@ public class DumpAction implements Action {
 
     private void printStats() {
 
-        final int indent = 2;
-
         // Do this before printing stats to avoid mixed output messages
         final Set<ClassLoader> allClassloaders = getAllClassloaders();
 
@@ -781,22 +660,13 @@ public class DumpAction implements Action {
         toolkit.eol();
 
         // Count classes
-        toolkit.indent(indent);
-        buffer.a("Total number of classes: ");
-        toolkit.bold(RobustaJavaAgent.getInstrumentation().getAllLoadedClasses().length);
-        toolkit.eol();
+        toolkit.printStatEntry("Total number of classes: ",
+                               RobustaJavaAgent.getInstrumentation().getAllLoadedClasses().length);
 
         // Count duplicates
-        toolkit.indent(indent);
-        buffer.a("Total number of duplicated classes: ");
-        toolkit.bold(countDuplicates());
-        toolkit.eol();
+        toolkit.printStatEntry("Total number of duplicated classes: ", countDuplicates());
 
         // Count classloaders
-        toolkit.indent(indent);
-        buffer.a("Total number of classloaders (including hidden): ");
-        toolkit.bold(allClassloaders.size());
-        toolkit.eol();
-
+        toolkit.printStatEntry("Total number of classloaders (including hidden): ", allClassloaders.size());
     }
 }

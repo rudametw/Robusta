@@ -1,4 +1,4 @@
-package fr.adele.robusta;
+package fr.adele.robusta.commands;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public class EmptyClass {
 	public void method(){
 
 	    //TRICKY ONE HERE... generic not kept in Bytecode
-	    new ArrayList<fr.adele.robusta.ClassAction>();
+	    new ArrayList<fr.adele.robusta.commands.ClassAction>();
 
 	    return;
 	}

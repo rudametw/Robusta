@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-package fr.adele.robusta;
+package fr.adele.robusta.commands;
 
 import java.util.List;
 

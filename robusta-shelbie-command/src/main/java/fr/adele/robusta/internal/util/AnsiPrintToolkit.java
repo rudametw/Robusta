@@ -241,4 +241,18 @@ public class AnsiPrintToolkit {
         eol();
     }
 
+    public void printStatEntry(final String phrase, final int value) {
+        final int indent = 2;
+
+        // toolkit.indent(indent);
+        // buffer.a(phrase);
+        // toolkit.bold(value);
+        // toolkit.eol();
+
+        indent(indent);
+        buffer.a(phrase);
+        bold(value);
+        eol();
+    }
+
 }
