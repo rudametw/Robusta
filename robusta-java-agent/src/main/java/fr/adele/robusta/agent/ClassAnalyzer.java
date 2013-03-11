@@ -20,7 +20,8 @@ public class ClassAnalyzer implements ClassFileTransformer {
     // "java/", "javax/" ,
     // "fr/adele/robusta/dependencygraph/ClassLoaderUtils$LOADER_HIERARCHY"};
 
-    private final String[] ignore = new String[] {"sun/", "com/sun/", "java/", "javax/", "org/apache/felix/utils/collections/DictionaryAsMap"};
+//    private final String[] ignore = new String[] {"sun/", "com/sun/", "java/", "javax/", "org/apache/felix/utils/collections/DictionaryAsMap"};
+    private final String[] ignore = new String[] {};
 
     // private final String[] ignore = new String[] {"sun/", "com/sun/",
     // "java/", "javax/", "org/ow2/chameleon/core/Main",
@@ -36,6 +37,8 @@ public class ClassAnalyzer implements ClassFileTransformer {
                             final ProtectionDomain protectionDomain, final byte[] classfileBuffer) throws IllegalClassFormatException {
 
         // System.out.println("[ROBUSTA] ANALYZER TRANSFORM");
+
+        long initial_time = System.currentTimeMillis();
 
         if (classBeingRedefined != null) {
             System.out.println("[ROBUSTA] Class Redefinition or retransformation: " + className);
@@ -74,6 +77,12 @@ public class ClassAnalyzer implements ClassFileTransformer {
             System.err.println("ERROR: BYTECODE MANIPULATION FAAAAILED");
             t.printStackTrace();
         }
+
+        long final_time = System.currentTimeMillis();
+        long duration = final_time - initial_time;
+
+        // if (verbose) {
+        System.out.println("[ROBUSTA][TIME] " + duration + " miliseconds");
 
         return newByteCode;
 

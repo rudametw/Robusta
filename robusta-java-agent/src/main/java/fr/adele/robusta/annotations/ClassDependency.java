@@ -14,4 +14,5 @@ public @interface ClassDependency {
 
     public Class<?> clazz();
 
+
 }
