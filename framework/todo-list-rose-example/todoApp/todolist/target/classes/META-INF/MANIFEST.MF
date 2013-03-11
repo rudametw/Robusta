@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1360083089007
+Build-Jdk: 1.6.0_38
+Built-By: rudametw
+Bundle-ManifestVersion: 2
+Bundle-Name: TK Barjo TodoList
+Bundle-SymbolicName: todolist
+Bundle-Version: 0.1.0
+Created-By: Apache Maven Bundle Plugin
+Export-Package: tk.barjo.todolist;version="0.1.0"
+Import-Package: javax.sql,javax.ws.rs;version="[0,2)",javax.ws.rs.core;v
+ ersion="[0,2)",org.osgi.framework;version="[1.6,2)",org.osgi.service.jd
+ bc;version="[0,1)",org.ow2.chameleon.rose.api;version="[1.0,2)",tk.barj
+ o.todolist
+Tool: Bnd-1.50.0
