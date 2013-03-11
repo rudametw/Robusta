@@ -138,6 +138,8 @@ public class DumpAction implements Action {
     Ansi buffer;
 
     public Object execute(final CommandSession session) throws Exception {
+        long initial_time = System.currentTimeMillis();
+
         toolkit = new AnsiPrintToolkit();
         buffer = toolkit.getBuffer();
 
@@ -200,6 +202,14 @@ public class DumpAction implements Action {
             toolkit.red(stackTrace);
             toolkit.eol();
         } finally {
+            long final_time = System.currentTimeMillis();
+            long duration = final_time - initial_time;
+
+            // if (verbose) {
+            toolkit.eol();
+            toolkit.subtitle("Total execution time: " + duration + " miliseconds");
+            // }
+
             // Flush buffer to console
             final PrintStream stream = System.out;
             stream.println(toolkit.getBuffer().toString());
@@ -208,6 +218,7 @@ public class DumpAction implements Action {
             toolkit = null;
             buffer = null;
         }
+
         return null;
     }
 

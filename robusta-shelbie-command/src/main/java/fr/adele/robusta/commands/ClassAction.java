@@ -1,5 +1,9 @@
 package fr.adele.robusta.commands;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,8 +22,6 @@ import org.apache.felix.ipojo.annotations.HandlerDeclaration;
 import org.apache.felix.service.command.CommandSession;
 import org.fusesource.jansi.Ansi;
 
-import scala.Int;
-
 import com.google.common.base.Throwables;
 
 import fr.adele.robusta.agent.RobustaJavaAgent;
@@ -29,6 +31,10 @@ import fr.adele.robusta.dependencygraph.ClassLoaderUtils;
 import fr.adele.robusta.dependencygraph.ClassTree;
 import fr.adele.robusta.dependencygraph.ClassUtils;
 import fr.adele.robusta.internal.util.AnsiPrintToolkit;
+import fr.adele.robusta.internal.util.FileUtils;
+import fr.adele.robusta.internal.util.GraphUtils;
+import fr.adele.robusta.internal.util.GraphWriter;
+
 import java.lang.annotation.Annotation;
 
 @Component
@@ -43,6 +49,12 @@ public class ClassAction implements Action {
             required = false,
             description = "Sort output")
     private boolean sort = false;
+
+    @Option(name = "-f",
+            aliases = {"--force"},
+            required = false,
+            description = "Force file overwrite")
+    private boolean force = false;
 
     @Option(name = "-debug",
             aliases = {"--debug"},
@@ -110,11 +122,17 @@ public class ClassAction implements Action {
             description = "Dump all annotations for all classes")
     private boolean allAnnotations = false;
 
-    @Option(name = "-t",
-            aliases = {"--tree"},
+    @Option(name = "-h",
+            aliases = {"--hierarchy"},
             required = false,
-            description = "Dump all information")
-    private boolean tree = false;
+            description = "Dump class hierarchy for given class")
+    private boolean hierarchy = false;
+
+    @Option(name = "-t",
+            aliases = {"--type"},
+            required = false,
+            description = "Dump all annotations for the given type")
+    private String type = "";
 
     @Option(name = "-gc",
             aliases = {"--garbage-collection"},
@@ -122,12 +140,21 @@ public class ClassAction implements Action {
             description = "Instruct JVM to attempt garbage collection *before* calculating dependencies (this cannot guarantee GC --> see Java Spec)")
     private boolean gc = false;
 
+    @Option(name = "-dot",
+            aliases = {"--graphiz-dot"},
+            required = false,
+            description = "Print the graph in a graphiz digraph format")
+    private String dot = "";
+
     /* Used for colorful output */
     AnsiPrintToolkit toolkit;
 
     Ansi buffer;
 
     public Object execute(final CommandSession session) throws Exception {
+
+        long initial_time = System.currentTimeMillis();
+
         toolkit = new AnsiPrintToolkit();
         buffer = toolkit.getBuffer();
 
@@ -155,7 +182,11 @@ public class ClassAction implements Action {
                 printClassesAnnotations();
             }
             // If nothing is set, we should print stats
-            if (!classes && !stats && !duplicates && !duplicatesByCL && !gc && !tree && !annotations && !allAnnotations) {
+            boolean isDotSet = dot.equals("") ? false : true;
+            boolean isTypeSet = type.equals("") ? false : true;
+
+            if (!classes && !stats && !duplicates && !duplicatesByCL && !gc && !annotations && !allAnnotations
+                && !hierarchy && !isTypeSet && !isDotSet) {
                 stats = true;
             }
 
@@ -163,7 +194,7 @@ public class ClassAction implements Action {
                 dumpAllClasses();
             }
 
-            if (tree) {
+            if (hierarchy) {
                 printTreeNodes();
             }
             if (duplicates || duplicatesByCL) {
@@ -174,12 +205,29 @@ public class ClassAction implements Action {
                 printStats();
             }
 
+            if (!type.equals("")) {
+                printRobustaAnnotationsForClass(type);
+            }
+
+            if (!dot.equals("")) {
+                printGraphToFile(dot);
+            }
+
         } catch (final Throwable e) {
             // Send stacktrace to buffer!
             final String stackTrace = Throwables.getStackTraceAsString(e);
             toolkit.red(stackTrace);
             toolkit.eol();
         } finally {
+
+            long final_time = System.currentTimeMillis();
+            long duration = final_time - initial_time;
+
+//            if (verbose) {
+                toolkit.eol();
+                toolkit.subtitle("Total execution time: " + duration + " miliseconds");
+//            }
+
             // Flush buffer to console
             final PrintStream stream = System.out;
             stream.println(toolkit.getBuffer().toString());
@@ -351,7 +399,7 @@ public class ClassAction implements Action {
                 annotation = clazz.getAnnotation(Robusta.class);
             } catch (final Throwable e) {
                 // TODO Auto-generated catch block
-                toolkit.white("EXCEPTION CAUGHT IN PRINT ANNOTATIONS: ");
+                toolkit.white("EXCEPTION CAUGHT IN PRINTING ALL CLASSES WITH ROBUSTA ANNOTATIONS: CANNOT GET VALID ROBUSTA ANNOTATION: ");
                 toolkit.white("Class: " + clazz.getName() + "    ");
                 toolkit.magenta(Throwables.getStackTraceAsString(e));
                 toolkit.eol();
@@ -377,7 +425,7 @@ public class ClassAction implements Action {
 
             if (verbose) {
                 try {
-                    printAnnotation(annotation);
+                    printAnnotation(clazz.getName(), annotation);
                 } catch (final Exception e) {
                     toolkit.subtitle("EXCEPTION CAUGHT IN PRINT ANNOTATIONS: ");
                     toolkit.green(Throwables.getStackTraceAsString(e));
@@ -393,27 +441,210 @@ public class ClassAction implements Action {
 
     }
 
-    private void printAnnotation(final Robusta annotation) {
+    public void testWriteGraph() {
+        String tmpFileName = "tmp.dot";
+        GraphWriter graph = new GraphWriter(tmpFileName, toolkit);
+
+        if (!graph.open(force)) {
+            toolkit.urgent("Error: cannot open file");
+            return;
+        }
+
+        // Write edges to graph
+        graph.writeEdge("A", "B");
+        graph.writeEdge("B", "C");
+        graph.writeEdge("A", "D");
+        graph.writeEdge("A", "C");
+
+        graph.close();
+    }
+
+    private void printGraphToFile(String fileName) {
+
+        toolkit.title("Writing Class Graph to File: " + fileName);
+
+        GraphWriter graph = new GraphWriter(fileName, toolkit);
+
+        if (!graph.open(force)) {
+            toolkit.urgent("Error: cannot open file");
+            return;
+        }
+
+        Class<?>[] classes = RobustaJavaAgent.getInstrumentation().getAllLoadedClasses();
+
+        toolkit.subtitle("Classes length: " + classes.length);
+
+        for (final Class<?> clazz : RobustaJavaAgent.getInstrumentation().getAllLoadedClasses()) {
+            Robusta annotation = null;
+
+            try {
+                annotation = clazz.getAnnotation(Robusta.class);
+            } catch (final Throwable e) {
+                // TODO Auto-generated catch block
+                toolkit.white("EXCEPTION CAUGHT IN PRINTING ALL CLASSES WITH ROBUSTA ANNOTATIONS: CANNOT GET VALID ROBUSTA ANNOTATION: ");
+                toolkit.white("Class: " + clazz.getName() + "    ");
+                toolkit.magenta(Throwables.getStackTraceAsString(e));
+                toolkit.eol();
+
+                graph.writeNode(getFullClassName(clazz));
+                continue;
+            }
+
+            if (annotation == null) {
+                // non_annotated++;
+                toolkit.white("annotated=no   " + clazz.getName() + "");
+                toolkit.eol();
+                graph.writeNode(getFullClassName(clazz));
+                continue;
+            }
+            // annotated++;
+            toolkit.white("annotated=");
+            toolkit.bold("yes  ");
+            toolkit.white(clazz.getName());
+            toolkit.eol();
+
+            addAnnotationDependenciesToGraph(graph, getFullClassName(clazz), annotation);
+        }
+        graph.close();
+    }
+
+    public String getFullClassName(Class<?> clazz) {
+        final String fullClassName;
+        if (clazz.getClassLoader() == null) {
+            fullClassName = "BOOTSTRAP:" + clazz.getName();
+        } else {
+            fullClassName = clazz.getClassLoader().toString() + ":" + clazz.getName();
+        }
+        return fullClassName;
+    }
+
+    public String getFullNameFromAnnotation(ClassDependency annotation) {
+        String fullClassName;
+        try {
+            // String className = annotation.clazz().getName();
+            fullClassName = getFullClassName(annotation.clazz());
+        } catch (final Throwable e) {
+            fullClassName = "INVALID:" + annotation.className();
+        }
+        return fullClassName;
+    }
+
+    private void addAnnotationDependenciesToGraph(final GraphWriter graph, final String fullClassName,
+                                                  final Robusta annotation) {
+        final ClassDependency[] dependencies = annotation.value();
+        for (final ClassDependency dependency : dependencies) {
+            final String dependencyFullName = getFullNameFromAnnotation(dependency);
+            graph.writeEdge(fullClassName, dependencyFullName);
+        }
+    }
+
+    private void printRobustaAnnotationsForClass(final String className) {
+
+        toolkit.title("Printing Robusta annotations for Class: " + className);
+
+        Class<?>[] classes = RobustaJavaAgent.getInstrumentation().getAllLoadedClasses();
+
+        for (final Class<?> clazz : classes) {
+            if (!clazz.getName().equals(className)) {
+                if (debug) {
+                    toolkit.white(className + " not equaled to " + clazz.getName());
+                    toolkit.eol();
+                }
+                continue;
+            }
+            toolkit.green(className + " equaled to " + clazz.getName());
+            toolkit.eol();
+
+            Robusta annotation = null;
+
+            try {
+                annotation = clazz.getAnnotation(Robusta.class);
+            } catch (final Throwable e) {
+                // TODO Auto-generated catch block
+                toolkit.white("EXCEPTION CAUGHT! CANNOT RECOVER ROBUSTA ANNOTATIONS: ");
+                toolkit.white("Class: " + clazz.getName() + "    ");
+                toolkit.magenta(Throwables.getStackTraceAsString(e));
+                toolkit.eol();
+            }
+
+            if (annotation == null) {
+                final String classloaderName;
+
+                if (clazz.getClassLoader() == null) {
+                    classloaderName = "bootstrap-classloader (NULL)";
+                } else {
+                    classloaderName = clazz.getClassLoader().toString();
+                }
+
+                toolkit.white("annotated=no   class:" + clazz.getName() + " classloader:" + classloaderName);
+                toolkit.eol();
+                continue;
+            }
+            toolkit.white("annotated=");
+            toolkit.bold("yes  ");
+            toolkit.white("   class:" + clazz.getName() + " classloader:" + clazz.getClassLoader().toString());
+            toolkit.eol();
+
+            if (verbose) {
+                try {
+                    printAnnotation(clazz.getName(), annotation);
+                } catch (final Exception e) {
+                    toolkit.subtitle("CANNOT PRINT ANNOTATION: ");
+                    toolkit.green(Throwables.getStackTraceAsString(e));
+                    toolkit.eol();
+                }
+            }
+        }
+    }
+
+    private void printAnnotation(final String className, final Robusta annotation) {
         // TODO Auto-generated method stub
         toolkit.indent(2);
         toolkit.white("@ROBUSTA: ");
         toolkit.eol();
 
         final ClassDependency[] dependencies = annotation.value();
-        final int small_padding = 10, large_padding = 50;
+        final int small_padding = 10, large_padding = 60;
 
         for (final ClassDependency dependency : dependencies) {
-            toolkit.indent(4);
-            toolkit.white("@CLASSDEPENDENCY: ");
-            toolkit.white(" classname=");
-            toolkit.bold(AnsiPrintToolkit.padRight(dependency.className(), large_padding));
-            toolkit.white(" modifier=");
-            toolkit.bold(AnsiPrintToolkit.padRight(dependency.modifier(), small_padding));
-            toolkit.white(" origin=");
-            toolkit.bold(AnsiPrintToolkit.padRight(dependency.origin(), small_padding));
-            toolkit.white(" clazz=");
-            toolkit.bold(AnsiPrintToolkit.padRight(dependency.clazz().getName(), large_padding));
-            toolkit.eol();
+
+            try {
+
+                toolkit.indent(4);
+                toolkit.white("@CLASSDEPENDENCY: ");
+                toolkit.white(" classname=");
+                toolkit.bold(AnsiPrintToolkit.padRight(dependency.className(), large_padding));
+                toolkit.white(" modifier=");
+                toolkit.bold(AnsiPrintToolkit.padRight(dependency.modifier(), small_padding));
+                toolkit.white(" origin=");
+                toolkit.bold(AnsiPrintToolkit.padRight(dependency.origin(), small_padding));
+                toolkit.white(" clazz=");
+                toolkit.bold(AnsiPrintToolkit.padRight(dependency.clazz().getName(), large_padding));
+
+                final String classloaderName;
+                if (dependency.clazz().getClassLoader() == null) {
+                    classloaderName = "bootstrap-classloader (NULL)";
+                } else {
+                    classloaderName = dependency.clazz().getClassLoader().toString();
+                }
+                toolkit.white(" classLoader=");
+                toolkit.bold(AnsiPrintToolkit.padRight(classloaderName, large_padding));
+                toolkit.eol();
+
+            } catch (final Throwable e) {
+                // TODO Auto-generated catch block
+                toolkit.white("INVALID \nEXCEPTION CAUGHT IN PRINTING CLASS DEPENDENCY ANNOTATIONS: CANNOT GET VALID CLAZZ: ");
+                toolkit.white("Dependent Class: ");
+                toolkit.blue(className);
+                toolkit.white(" Has not properly loaded: ");
+                toolkit.yellow(dependency.className() + "    ");
+                if (debug) {
+                    toolkit.magenta(Throwables.getStackTraceAsString(e));
+                } else {
+                    toolkit.magenta("See exception with -debug flag.");
+                }
+                toolkit.eol();
+            }
         }
     }
 
